@@ -8,8 +8,12 @@ it to any fact you state about a database: the SQL that proves it, and the date 
 The guards apply it to what a schema promises, to the identifiers an LLM may emit, to query
 plans and to vector-index recall. pg_phasevec (a 0.x preview) applies it to what a model read
 from a row: a reading is only served while the text it read is still the row's. All are
-PostgreSQL extensions, Apache-2.0, by Manuel Reyes
-Bravo, each in its own repository under github.com/Manuelreyesbravo.
+PostgreSQL extensions, Apache-2.0, by Manuel Reyes Bravo, each in its own repository under
+github.com/Manuelreyesbravo.
+
+One more piece is not an extension: ygg-agent, the model's side of the gate. The model writes
+SQL, it travels over PostgreSQL's own protocol, and the gate decides: no MCP server and no
+JSON between the model and its data, and with the model in the same process, no HTTP at all.
 
 ## The pieces
 
@@ -22,9 +26,9 @@ Bravo, each in its own repository under github.com/Manuelreyesbravo.
 | [pg_plan_guard][plan] | drift from an approved plan | 1.1.11 | 19 | pg_plan_advice (contrib) |
 | [pg_recall_guard][recall] | vector-index recall drift | 0.2.10 | 10-19 | tsm_system_rows |
 | [pg_phasevec][phasevec] | **preview, 0.x**: readings with provenance | 0.20.0 | 18, 19 | nothing |
+| [ygg-agent][agent] | not an extension: the model's loop, no MCP | 0.2.0 | any | gate >= 0.4.0 |
 
-Versions are the latest release of each repository (pg_phasevec 0.20.0 is the preview's
-commit, not yet tagged). "PostgreSQL" is the majors each
+Versions are the latest release of each repository. "PostgreSQL" is the majors each
 repository's CI runs on; "living" is pg_living_assertions; parentheses mean optional.
 
 [gate]: https://github.com/Manuelreyesbravo/pg_agent_gate
@@ -34,6 +38,7 @@ repository's CI runs on; "living" is pg_living_assertions; parentheses mean opti
 [plan]: https://github.com/Manuelreyesbravo/pg_plan_guard
 [recall]: https://github.com/Manuelreyesbravo/pg_recall_guard
 [phasevec]: https://github.com/Manuelreyesbravo/pg_phasevec
+[agent]: https://github.com/Manuelreyesbravo/ygg-agent
 
 ### pg_agent_gate (the flagship)
 
@@ -46,6 +51,17 @@ under the agent's own rights within a per-agent row limit and budget. Every prop
 refusal goes to an append-only record. The enforcement is in server hooks, so no client,
 driver or protocol gets around it. An optional MCP shim (`gated-mcp/`) serves clients that
 only speak MCP, and it adds no power.
+
+### ygg-agent (the model's side, no MCP)
+
+A Python package (`pip install "ygg-agent[binary]"`, on PyPI; not on PGXN, as it runs outside
+the database) for running an LLM agent against the gate with no MCP server. The model writes
+one SQL statement; ygg-agent hands it to `agent_gate.propose()` over PostgreSQL's own
+protocol; the verdict goes back to the model. It has no power of its own: it connects as the
+agent role, refuses to work unless `whoami()` says the session is behind the gate, never
+executes the model's SQL itself, and stops after three refusals in a row. Since 0.2.0
+`LlamaCpp` loads a GGUF model in the same process: no model server and no HTTP, and the only
+connection the loop opens is PostgreSQL's. Any `/v1/chat/completions` server works too.
 
 ### pg_living_assertions (the foundation)
 
@@ -107,6 +123,7 @@ pg_living_assertions  <-- requires --  pg_promise_guard
                       <-- optional --  pg_agent_gate   (bound assertions; use 0.5.6 or later)
 pg_recall_guard       (tsm_system_rows; a vector index to watch)
 pg_phasevec           (stands alone)
+ygg-agent             (Python, outside the database) -- talks SQL to --> pg_agent_gate >= 0.4.0
 ```
 
 `make install` of a guard does not install pg_living_assertions: install it first, then

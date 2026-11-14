@@ -1,4 +1,4 @@
-# Trial kit: pg_agent_gate, pg_phasevec, pg_living_assertions and the guards
+# Trial kit: pg_agent_gate, ygg-agent, pg_phasevec, pg_living_assertions and the guards
 
 This kit is for PostgreSQL hackers and technical early users who want to install these
 extensions on a throwaway cluster, try them, and attack them. It assumes you know PostgreSQL
@@ -16,6 +16,7 @@ recomputes it from the raw data.
 | piece | role | version | PostgreSQL | in this kit |
 |---|---|---|---|---|
 | pg_agent_gate | flagship | 0.4.3 | 18, 19 | quickstart, promises, attacks |
+| ygg-agent | the model's loop, no MCP (Python) | 0.2.0 | any with the gate >= 0.4.0 | notes below |
 | pg_phasevec | **preview, 0.x** | 0.20.0 | 18, 19 | quickstart, promises, attacks |
 | pg_living_assertions | foundation | 0.5.10 | 11-19 | install notes below |
 | pg_promise_guard | guard | 0.2.10 | 11-19 | install notes below |
@@ -48,6 +49,19 @@ protocol path around it. The adversary it is built against is the agent.
 Bound assertions come from pg_living_assertions: use **0.5.6 or later** (0.5.10 is current).
 With 0.5.5 the gate detects a `search_path` leak and refuses writes that have bound
 assertions (gate README; META.json recommends 0.5.6).
+
+### The model's side: ygg-agent 0.2.0
+
+The gate needs no MCP server. [ygg-agent](https://github.com/Manuelreyesbravo/ygg-agent)
+(Python, Apache-2.0, `pip install "ygg-agent[binary]"`, on PyPI, not PGXN: it runs outside the
+database) is the loop between a model and the gate: the model writes one SQL statement, it
+travels to `agent_gate.propose()` over PostgreSQL's own protocol, and the verdict goes back to
+the model. It has no power of its own: it connects as the agent role, refuses to run unless
+`whoami()` says the session is behind the gate, and never executes the model's SQL itself.
+Since 0.2.0, `LlamaCpp` loads a GGUF model in the same process (`pip install
+"ygg-agent[binary,local]"`): no model server and no HTTP; the only connection is PostgreSQL's.
+This kit does not walk through it; its README and tests do, against the public image.
+An attack worth trying: make the loop do anything the gate would refuse from `psql`.
 
 ## pg_living_assertions and the four guards
 
@@ -112,6 +126,7 @@ repository's `fuzz/` directory.
   `v0.4.3` (`856cbcf`); what came after is `Cargo.lock`, the Setup fix and formatting (its
   CHANGELOG, "Unreleased"). The tag `v0.4.3` was moved once, on 2026-11-11, from `4c0f6a0` to
   `856cbcf` (same gate code); the CHANGELOG says so, and release tags are no longer moved.
+* ygg-agent 0.2.0: tag `v0.2.0` = commit `9c77bf5` (PyPI `ygg-agent` 0.2.0).
 * pg_phasevec 0.20.0: tag `v0.20.0` = commit `fdd19cb` (preview).
 * pg_living_assertions and the guards: their latest tags (`v0.5.10`, `v0.2.10`, `v0.4.9`,
   `v1.1.11`, `v0.2.10`).
