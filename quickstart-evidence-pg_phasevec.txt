@@ -1,0 +1,381 @@
+Evidence for quickstart-pg_phasevec.md, steps 1-6 run as written, with their output.
+
+Paths under the home directory are shown as ~.
+
+* When and where: 2026-11-14, 00:46 UTC (server timestamps are local time, -03); Fedora 45
+  (kernel 7.3.3), nproc 24, AMD Ryzen AI 9 HX 370, gcc 16.2.1; every command at nice 19, under
+  a background load. Run by Claude for the owner.
+* Source: step 1 clones https://github.com/Manuelreyesbravo/pg_phasevec and checks out
+  v0.20.0 (= fdd19cb), as written.
+* PostgreSQL: 19beta2, release build (a copy of ~/pg19 in /dev/shm/kitrun/pg19), and 18.6,
+  assertion-enabled (--enable-cassert; a copy of pgrx's own build, ~/.pgrx/18.6/pgrx-install,
+  in /dev/shm/kitrun/pg18). Each copy's pg_config reports the copy's paths. Every
+  pg_phasevec* and pg_agent_gate* file was deleted from both copies before the runs.
+* How: the quickstart's ```sh blocks were extracted in order and run as one bash script under
+  `set -x`, from an empty directory (/dev/shm/kitrun/pv19, .../pv18). The only substitution is
+  `/path/to/pg_config` -> the copy's pg_config. DATA=/tmp/pv-trial and PGPORT=5572 are the
+  quickstart's own. Lines starting with '+' are the shell's trace. No edit was made to the
+  output other than the ~ for the home directory. The last line of each section, `rc=`, is
+  the script's exit status, added by the runner.
+* Results: identical on both (the output from step 3 on is byte for byte the same): coverage
+  pending 3 -> fresh 3, find ranks key 1 first (0.9939), the edited row goes stale, find
+  refuses below min_coverage and answers 2, 3 with p_partial, the claim is verified, then
+  refuted after the world changes and leaves brief(). The build gave no compiler warnings. No
+  PANIC, TRAP or "terminated by signal" in either server log (read before step 6 removed it).
+* Not run: `make installcheck`, the test/*.sh scripts, any attack in what-to-attack-pg_phasevec.md.
+
+================================================================================= PostgreSQL 19beta2
++ git clone https://github.com/Manuelreyesbravo/pg_phasevec
+Cloning into 'pg_phasevec'...
++ cd pg_phasevec
++ git checkout v0.20.0
+Note: switching to 'v0.20.0'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at fdd19cb README for a first reader: a 0.x preview, its threat model and its known limits
++ export PG_CONFIG=/dev/shm/kitrun/pg19/bin/pg_config
++ PG_CONFIG=/dev/shm/kitrun/pg19/bin/pg_config
++ make PG_CONFIG=/dev/shm/kitrun/pg19/bin/pg_config
+gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wmissing-format-attribute -Wold-style-declaration -Wimplicit-fallthrough=5 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -Wmissing-variable-declarations -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -O2 -Wstrict-prototypes -Wold-style-definition -fPIC -fvisibility=hidden -O3 -fPIC -fvisibility=hidden -I. -I./ -I/dev/shm/kitrun/pg19/include/postgresql/server -I/dev/shm/kitrun/pg19/include/postgresql/internal -D_GNU_SOURCE      -c -o src/phasevec_ivf.o src/phasevec_ivf.c
+gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wmissing-format-attribute -Wold-style-declaration -Wimplicit-fallthrough=5 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -Wmissing-variable-declarations -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -O2 -Wstrict-prototypes -Wold-style-definition -fPIC -fvisibility=hidden -O3 -fPIC -fvisibility=hidden -I. -I./ -I/dev/shm/kitrun/pg19/include/postgresql/server -I/dev/shm/kitrun/pg19/include/postgresql/internal -D_GNU_SOURCE      -c -o src/phasevec_ask.o src/phasevec_ask.c
+gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wmissing-format-attribute -Wold-style-declaration -Wimplicit-fallthrough=5 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -Wmissing-variable-declarations -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -O2 -Wstrict-prototypes -Wold-style-definition -fPIC -fvisibility=hidden -O3 -fPIC -fvisibility=hidden -I. -I./ -I/dev/shm/kitrun/pg19/include/postgresql/server -I/dev/shm/kitrun/pg19/include/postgresql/internal -D_GNU_SOURCE      -c -o src/phasevec_truth.o src/phasevec_truth.c
+gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wmissing-format-attribute -Wold-style-declaration -Wimplicit-fallthrough=5 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -Wmissing-variable-declarations -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -O2 -Wstrict-prototypes -Wold-style-definition -fPIC -fvisibility=hidden -O3 -fPIC -fvisibility=hidden -I. -I./ -I/dev/shm/kitrun/pg19/include/postgresql/server -I/dev/shm/kitrun/pg19/include/postgresql/internal -D_GNU_SOURCE      -c -o src/phasevec_guard.o src/phasevec_guard.c
+gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wmissing-format-attribute -Wold-style-declaration -Wimplicit-fallthrough=5 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -Wmissing-variable-declarations -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -O2 -Wstrict-prototypes -Wold-style-definition -fPIC -fvisibility=hidden -O3 -fPIC -fvisibility=hidden -shared -o pg_phasevec.so src/phasevec_ivf.o src/phasevec_ask.o src/phasevec_truth.o src/phasevec_guard.o -L/dev/shm/kitrun/pg19/lib    -Wl,--as-needed -Wl,-rpath,'/dev/shm/kitrun/pg19/lib',--enable-new-dtags -fvisibility=hidden -fvisibility=hidden 
+gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wmissing-format-attribute -Wold-style-declaration -Wimplicit-fallthrough=5 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -Wmissing-variable-declarations -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -O2 -Wstrict-prototypes -Wold-style-definition -fPIC -fvisibility=hidden -O3 -fPIC -fvisibility=hidden -I. -I./ -I/dev/shm/kitrun/pg19/include/postgresql/server -I/dev/shm/kitrun/pg19/include/postgresql/internal -D_GNU_SOURCE      -c -o src/pg_phasevec_observe.o src/pg_phasevec_observe.c
+gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wmissing-format-attribute -Wold-style-declaration -Wimplicit-fallthrough=5 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -Wmissing-variable-declarations -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -O2 -Wstrict-prototypes -Wold-style-definition -fPIC -fvisibility=hidden -O3 -fPIC -fvisibility=hidden src/pg_phasevec_observe.o -L/dev/shm/kitrun/pg19/lib    -Wl,--as-needed -Wl,-rpath,'/dev/shm/kitrun/pg19/lib',--enable-new-dtags -fvisibility=hidden -fvisibility=hidden -shared -o src/pg_phasevec_observe.so
++ make install PG_CONFIG=/dev/shm/kitrun/pg19/bin/pg_config
+/usr/bin/mkdir -p '/dev/shm/kitrun/pg19/lib/postgresql'
+/usr/bin/mkdir -p '/dev/shm/kitrun/pg19/share/postgresql/extension'
+/usr/bin/mkdir -p '/dev/shm/kitrun/pg19/share/postgresql/extension'
+/usr/bin/mkdir -p '/dev/shm/kitrun/pg19/lib/postgresql'
+/usr/bin/install -c -m 755  pg_phasevec.so '/dev/shm/kitrun/pg19/lib/postgresql/pg_phasevec.so'
+/usr/bin/install -c -m 644 .//pg_phasevec.control '/dev/shm/kitrun/pg19/share/postgresql/extension/'
+/usr/bin/install -c -m 644 .//sql/pg_phasevec--0.1.0.sql .//sql/pg_phasevec--0.1.0--0.2.0.sql .//sql/pg_phasevec--0.2.0--0.3.0.sql .//sql/pg_phasevec--0.3.0--0.4.0.sql .//sql/pg_phasevec--0.4.0--0.5.0.sql .//sql/pg_phasevec--0.5.0--0.6.0.sql .//sql/pg_phasevec--0.6.0--0.7.0.sql .//sql/pg_phasevec--0.7.0--0.8.0.sql .//sql/pg_phasevec--0.8.0--0.9.0.sql .//sql/pg_phasevec--0.9.0--0.10.0.sql .//sql/pg_phasevec--0.10.0--0.11.0.sql .//sql/pg_phasevec--0.11.0--0.12.0.sql .//sql/pg_phasevec--0.12.0--0.13.0.sql .//sql/pg_phasevec--0.13.0--0.14.0.sql .//sql/pg_phasevec--0.14.0--0.14.1.sql .//sql/pg_phasevec--0.14.1--0.14.2.sql .//sql/pg_phasevec--0.14.2--0.15.0.sql .//sql/pg_phasevec--0.15.0--0.16.0.sql .//sql/pg_phasevec--0.16.0--0.17.0.sql .//sql/pg_phasevec--0.17.0--0.18.0.sql .//sql/pg_phasevec--0.18.0--0.19.0.sql .//sql/pg_phasevec--0.19.0--0.20.0.sql  '/dev/shm/kitrun/pg19/share/postgresql/extension/'
+/usr/bin/install -c -m 755  src/pg_phasevec_observe.so '/dev/shm/kitrun/pg19/lib/postgresql/'
+++ /dev/shm/kitrun/pg19/bin/pg_config --bindir
++ export PATH=/dev/shm/kitrun/pg19/bin:~/.cargo/bin:~/.local/bin:~/pg19/bin:~/.bun/bin:/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/var/lib/snapd/snap/bin
++ PATH=/dev/shm/kitrun/pg19/bin:~/.cargo/bin:~/.local/bin:~/pg19/bin:~/.bun/bin:/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/var/lib/snapd/snap/bin
++ export DATA=/tmp/pv-trial PGPORT=5572 PGHOST=/tmp/pv-trial
++ DATA=/tmp/pv-trial
++ PGPORT=5572
++ PGHOST=/tmp/pv-trial
++ initdb -D /tmp/pv-trial --auth=trust -E UTF8 --locale=C -U postgres
+The files belonging to this database system will be owned by user "manu".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "C".
+The default text search configuration will be set to "english".
+
+Data page checksums are enabled.
+
+creating directory /tmp/pv-trial ... ok
+creating subdirectories ... ok
+selecting dynamic shared memory implementation ... posix
+selecting default "max_connections" ... 100
+selecting default "shared_buffers" ... 128MB
+selecting default time zone ... America/Santiago
+creating configuration files ... ok
+running bootstrap script ... ok
+performing post-bootstrap initialization ... ok
+syncing data to disk ... ok
+
+Success. You can now start the database server using:
+
+    pg_ctl -D /tmp/pv-trial -l logfile start
+
++ pg_ctl -D /tmp/pv-trial -l /tmp/pv-trial/server.log -w -o '-p 5572 -k /tmp/pv-trial -c listen_addresses='\'''\''' start
+waiting for server to start.... done
+server started
++ psql -X -U postgres -d postgres
+CREATE EXTENSION
+ reader_register 
+-----------------
+               1
+(1 row)
+
+CREATE TABLE
+INSERT 0 3
+ watch 
+-------
+     1
+(1 row)
+
+  state  | n | share  
+---------+---+--------
+ pending | 3 | 1.0000
+(1 row)
+
+CREATE FUNCTION
+ recorded 
+----------
+        3
+(1 row)
+
+ state | n | share  
+-------+---+--------
+ fresh | 3 | 1.0000
+(1 row)
+
+ key | score  | hamming | state 
+-----+--------+---------+-------
+ 1   | 0.9939 |       0 | fresh
+ 2   | 0.1104 |       2 | fresh
+ 3   | 0.0000 |       2 | fresh
+(3 rows)
+
++ psql -X -U postgres -d postgres
+UPDATE 1
+ key | state 
+-----+-------
+ 1   | stale
+ 2   | fresh
+ 3   | fresh
+(3 rows)
+
+ERROR:  phasevec: watch docs covers 66.7% of its rows and declared 95.0%: stale 33.3%
+ key | state 
+-----+-------
+ 2   | fresh
+ 3   | fresh
+(2 rows)
+
++ psql -X -U postgres -d postgres
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+CREATE ROLE
+GRANT
+GRANT
+GRANT
+GRANT
++ psql -X -U author -d postgres
+ assert 
+--------
+ 
+(1 row)
+
+ key | verdict  | error 
+-----+----------+-------
+ 4   | verified | 
+(1 row)
+
+ key | verdict  |      line      
+-----+----------+----------------
+ 1   | unproven | apricot
+ 2   | unproven | banana
+ 3   | unproven | cherry
+ 4   | verified | task 5 is done
+(4 rows)
+
++ psql -X -U postgres -d postgres -c 'UPDATE tasks SET done = false WHERE id = 5'
+UPDATE 1
++ psql -X -U author -d postgres
+ key | verdict | error 
+-----+---------+-------
+ 4   | refuted | 
+(1 row)
+
+ key | verdict  |  line   
+-----+----------+---------
+ 1   | unproven | apricot
+ 2   | unproven | banana
+ 3   | unproven | cherry
+(3 rows)
+
++ pg_ctl -D /tmp/pv-trial -m fast -w stop
+waiting for server to shut down.... done
+server stopped
++ rm -rf /tmp/pv-trial
+rc=0
+
+==================================================================================== PostgreSQL 18.6
++ git clone https://github.com/Manuelreyesbravo/pg_phasevec
+Cloning into 'pg_phasevec'...
++ cd pg_phasevec
++ git checkout v0.20.0
+Note: switching to 'v0.20.0'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at fdd19cb README for a first reader: a 0.x preview, its threat model and its known limits
++ export PG_CONFIG=/dev/shm/kitrun/pg18/bin/pg_config
++ PG_CONFIG=/dev/shm/kitrun/pg18/bin/pg_config
++ make PG_CONFIG=/dev/shm/kitrun/pg18/bin/pg_config
+gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -Wmissing-variable-declarations -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -O2 -fPIC -fvisibility=hidden -O3 -fPIC -fvisibility=hidden -I. -I./ -I/dev/shm/kitrun/pg18/include/postgresql/server -I/dev/shm/kitrun/pg18/include/postgresql/internal -DUSE_ASSERT_CHECKING=1 -DRANDOMIZE_ALLOCATED_MEMORY=1  -D_GNU_SOURCE      -c -o src/phasevec_ivf.o src/phasevec_ivf.c
+gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -Wmissing-variable-declarations -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -O2 -fPIC -fvisibility=hidden -O3 -fPIC -fvisibility=hidden -I. -I./ -I/dev/shm/kitrun/pg18/include/postgresql/server -I/dev/shm/kitrun/pg18/include/postgresql/internal -DUSE_ASSERT_CHECKING=1 -DRANDOMIZE_ALLOCATED_MEMORY=1  -D_GNU_SOURCE      -c -o src/phasevec_ask.o src/phasevec_ask.c
+gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -Wmissing-variable-declarations -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -O2 -fPIC -fvisibility=hidden -O3 -fPIC -fvisibility=hidden -I. -I./ -I/dev/shm/kitrun/pg18/include/postgresql/server -I/dev/shm/kitrun/pg18/include/postgresql/internal -DUSE_ASSERT_CHECKING=1 -DRANDOMIZE_ALLOCATED_MEMORY=1  -D_GNU_SOURCE      -c -o src/phasevec_truth.o src/phasevec_truth.c
+gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -Wmissing-variable-declarations -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -O2 -fPIC -fvisibility=hidden -O3 -fPIC -fvisibility=hidden -I. -I./ -I/dev/shm/kitrun/pg18/include/postgresql/server -I/dev/shm/kitrun/pg18/include/postgresql/internal -DUSE_ASSERT_CHECKING=1 -DRANDOMIZE_ALLOCATED_MEMORY=1  -D_GNU_SOURCE      -c -o src/phasevec_guard.o src/phasevec_guard.c
+gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -Wmissing-variable-declarations -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -O2 -fPIC -fvisibility=hidden -O3 -fPIC -fvisibility=hidden -shared -o pg_phasevec.so src/phasevec_ivf.o src/phasevec_ask.o src/phasevec_truth.o src/phasevec_guard.o -L/dev/shm/kitrun/pg18/lib    -Wl,--as-needed -Wl,-rpath,'/dev/shm/kitrun/pg18/lib',--enable-new-dtags -fvisibility=hidden -fvisibility=hidden 
+gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -Wmissing-variable-declarations -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -O2 -fPIC -fvisibility=hidden -O3 -fPIC -fvisibility=hidden -I. -I./ -I/dev/shm/kitrun/pg18/include/postgresql/server -I/dev/shm/kitrun/pg18/include/postgresql/internal -DUSE_ASSERT_CHECKING=1 -DRANDOMIZE_ALLOCATED_MEMORY=1  -D_GNU_SOURCE      -c -o src/pg_phasevec_observe.o src/pg_phasevec_observe.c
+gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -Wmissing-variable-declarations -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -O2 -fPIC -fvisibility=hidden -O3 -fPIC -fvisibility=hidden src/pg_phasevec_observe.o -L/dev/shm/kitrun/pg18/lib    -Wl,--as-needed -Wl,-rpath,'/dev/shm/kitrun/pg18/lib',--enable-new-dtags -fvisibility=hidden -fvisibility=hidden -shared -o src/pg_phasevec_observe.so
++ make install PG_CONFIG=/dev/shm/kitrun/pg18/bin/pg_config
+/usr/bin/mkdir -p '/dev/shm/kitrun/pg18/lib/postgresql'
+/usr/bin/mkdir -p '/dev/shm/kitrun/pg18/share/postgresql/extension'
+/usr/bin/mkdir -p '/dev/shm/kitrun/pg18/share/postgresql/extension'
+/usr/bin/mkdir -p '/dev/shm/kitrun/pg18/lib/postgresql'
+/usr/bin/install -c -m 755  pg_phasevec.so '/dev/shm/kitrun/pg18/lib/postgresql/pg_phasevec.so'
+/usr/bin/install -c -m 644 .//pg_phasevec.control '/dev/shm/kitrun/pg18/share/postgresql/extension/'
+/usr/bin/install -c -m 644 .//sql/pg_phasevec--0.1.0.sql .//sql/pg_phasevec--0.1.0--0.2.0.sql .//sql/pg_phasevec--0.2.0--0.3.0.sql .//sql/pg_phasevec--0.3.0--0.4.0.sql .//sql/pg_phasevec--0.4.0--0.5.0.sql .//sql/pg_phasevec--0.5.0--0.6.0.sql .//sql/pg_phasevec--0.6.0--0.7.0.sql .//sql/pg_phasevec--0.7.0--0.8.0.sql .//sql/pg_phasevec--0.8.0--0.9.0.sql .//sql/pg_phasevec--0.9.0--0.10.0.sql .//sql/pg_phasevec--0.10.0--0.11.0.sql .//sql/pg_phasevec--0.11.0--0.12.0.sql .//sql/pg_phasevec--0.12.0--0.13.0.sql .//sql/pg_phasevec--0.13.0--0.14.0.sql .//sql/pg_phasevec--0.14.0--0.14.1.sql .//sql/pg_phasevec--0.14.1--0.14.2.sql .//sql/pg_phasevec--0.14.2--0.15.0.sql .//sql/pg_phasevec--0.15.0--0.16.0.sql .//sql/pg_phasevec--0.16.0--0.17.0.sql .//sql/pg_phasevec--0.17.0--0.18.0.sql .//sql/pg_phasevec--0.18.0--0.19.0.sql .//sql/pg_phasevec--0.19.0--0.20.0.sql  '/dev/shm/kitrun/pg18/share/postgresql/extension/'
+/usr/bin/install -c -m 755  src/pg_phasevec_observe.so '/dev/shm/kitrun/pg18/lib/postgresql/'
+++ /dev/shm/kitrun/pg18/bin/pg_config --bindir
++ export PATH=/dev/shm/kitrun/pg18/bin:~/.cargo/bin:~/.local/bin:~/pg19/bin:~/.bun/bin:/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/var/lib/snapd/snap/bin
++ PATH=/dev/shm/kitrun/pg18/bin:~/.cargo/bin:~/.local/bin:~/pg19/bin:~/.bun/bin:/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/var/lib/snapd/snap/bin
++ export DATA=/tmp/pv-trial PGPORT=5572 PGHOST=/tmp/pv-trial
++ DATA=/tmp/pv-trial
++ PGPORT=5572
++ PGHOST=/tmp/pv-trial
++ initdb -D /tmp/pv-trial --auth=trust -E UTF8 --locale=C -U postgres
+The files belonging to this database system will be owned by user "manu".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "C".
+The default text search configuration will be set to "english".
+
+Data page checksums are enabled.
+
+creating directory /tmp/pv-trial ... ok
+creating subdirectories ... ok
+selecting dynamic shared memory implementation ... posix
+selecting default "max_connections" ... 100
+selecting default "shared_buffers" ... 128MB
+selecting default time zone ... America/Santiago
+creating configuration files ... ok
+running bootstrap script ... ok
+performing post-bootstrap initialization ... ok
+syncing data to disk ... ok
+
+Success. You can now start the database server using:
+
+    pg_ctl -D /tmp/pv-trial -l logfile start
+
++ pg_ctl -D /tmp/pv-trial -l /tmp/pv-trial/server.log -w -o '-p 5572 -k /tmp/pv-trial -c listen_addresses='\'''\''' start
+waiting for server to start.... done
+server started
++ psql -X -U postgres -d postgres
+CREATE EXTENSION
+ reader_register 
+-----------------
+               1
+(1 row)
+
+CREATE TABLE
+INSERT 0 3
+ watch 
+-------
+     1
+(1 row)
+
+  state  | n | share  
+---------+---+--------
+ pending | 3 | 1.0000
+(1 row)
+
+CREATE FUNCTION
+ recorded 
+----------
+        3
+(1 row)
+
+ state | n | share  
+-------+---+--------
+ fresh | 3 | 1.0000
+(1 row)
+
+ key | score  | hamming | state 
+-----+--------+---------+-------
+ 1   | 0.9939 |       0 | fresh
+ 2   | 0.1104 |       2 | fresh
+ 3   | 0.0000 |       2 | fresh
+(3 rows)
+
++ psql -X -U postgres -d postgres
+UPDATE 1
+ key | state 
+-----+-------
+ 1   | stale
+ 2   | fresh
+ 3   | fresh
+(3 rows)
+
+ERROR:  phasevec: watch docs covers 66.7% of its rows and declared 95.0%: stale 33.3%
+ key | state 
+-----+-------
+ 2   | fresh
+ 3   | fresh
+(2 rows)
+
++ psql -X -U postgres -d postgres
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+CREATE ROLE
+GRANT
+GRANT
+GRANT
+GRANT
++ psql -X -U author -d postgres
+ assert 
+--------
+ 
+(1 row)
+
+ key | verdict  | error 
+-----+----------+-------
+ 4   | verified | 
+(1 row)
+
+ key | verdict  |      line      
+-----+----------+----------------
+ 1   | unproven | apricot
+ 2   | unproven | banana
+ 3   | unproven | cherry
+ 4   | verified | task 5 is done
+(4 rows)
+
++ psql -X -U postgres -d postgres -c 'UPDATE tasks SET done = false WHERE id = 5'
+UPDATE 1
++ psql -X -U author -d postgres
+ key | verdict | error 
+-----+---------+-------
+ 4   | refuted | 
+(1 row)
+
+ key | verdict  |  line   
+-----+----------+---------
+ 1   | unproven | apricot
+ 2   | unproven | banana
+ 3   | unproven | cherry
+(3 rows)
+
++ pg_ctl -D /tmp/pv-trial -m fast -w stop
+waiting for server to shut down.... done
+server stopped
++ rm -rf /tmp/pv-trial
+rc=0

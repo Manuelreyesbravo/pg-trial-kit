@@ -1,0 +1,1626 @@
+quickstart-evidence.txt -- quickstart-pg_agent_gate.md, run as written, with its output
+=====================================================================================
+
+Paths under the home directory are shown as ~.
+
+When and where
+--------------
+* 2026-11-14, 00:46-00:50 UTC (the server timestamps in the output are local time, -03).
+* Fedora 45 (kernel 7.3.3), nproc 24, AMD Ryzen AI 9 HX 370; every command at nice 19, under
+  a background load. Run by Claude for the owner.
+
+What was used
+-------------
+* pg_agent_gate 0.4.3: commit 2e4da3b (GitHub main at the time of the run), cloned from
+  https://github.com/Manuelreyesbravo/pg_agent_gate by step 1, with its tracked Cargo.lock.
+* cargo-pgrx 0.19.2, built by step 1's `cargo install` into an empty Cargo home;
+  rustc/cargo 1.98.0; every crate downloaded from crates.io during the run.
+* PostgreSQL 19beta2, release build (no --enable-cassert): a copy of ~/pg19 in
+  /dev/shm/kitrun/pg19. pg_config is relocatable: the copy reports its own paths.
+* PostgreSQL 18.6, assertion-enabled (--enable-cassert): a copy of pgrx's own build
+  (~/.pgrx/18.6/pgrx-install) in /dev/shm/kitrun/pg18.
+* Before the runs, every pg_agent_gate* and pg_phasevec* file was deleted from both copies, so
+  what was loaded is what step 2 installed. Nothing was installed into the owner's PostgreSQL.
+
+How it was run
+--------------
+The quickstart's ```sh blocks (steps 1-6, cleanup included) were extracted in order and run as
+one bash script under `set -x`, from an empty directory (/dev/shm/kitrun/gate19, .../gate18).
+Lines starting with '+' are the shell's trace. Every command ran as written, except:
+* `/path/to/pg_config` is the copy's pg_config;
+* on 18, `cargo pgrx init --pg19` is `--pg18`, as the comment on that line says.
+DATA=/tmp/gate-trial and PGPORT=5571 are the quickstart's own. Two environment lines come
+before step 1 and are visible at the top of each transcript: CARGO_HOME and PGRX_HOME are
+empty directories (the sandbox cannot write ~/.cargo; the owner's ~/.pgrx is left alone), with
+$CARGO_HOME/bin first in PATH so that the cargo-pgrx built by step 1 is the one used; and
+NO_COLOR=1 CARGO_TERM_COLOR=never. cargo-pgrx still writes ANSI color codes; they were
+removed from this file. No other edit was made to the output. The last line of each section,
+`rc=`, is the script's exit status, added by the runner.
+
+Results
+-------
+Identical on 19beta2 and 18.6 (apart from timestamps and durations):
+* step 1: clone, checkout 2e4da3b, cargo-pgrx 0.19.2 installed (cargo warns that two crates
+  in cargo-pgrx's own lock file, chacha20 0.10.0 and der 0.8.0, are yanked; not the gate's);
+* step 2: `cargo pgrx init` downloads nothing; `cargo pgrx install --release` builds (36 s and
+  39 s) and installs pg_agent_gate 0.4.3;
+* step 3: initdb and start with shared_preload_libraries = 'pg_agent_gate';
+* step 4: register_agent returns "enforced_by": "shared_preload_libraries" and
+  "max_rows_per_window": 1;
+* step 5: whoami "enforced": true, version 0.4.3; DELETE refused by the gate; propose ok;
+  dry_run rolled_back with the exact before/after; commit kept (1 row); the 3-row write
+  aborted ("it touched 3 rows, more than this agent may change in one statement"); DROP TABLE
+  refused at propose (kind_allowed, T_DropStmt); acts() lists the three proposals; the
+  superuser sees only Ana changed to pro;
+* step 6: the cluster stops and /tmp/gate-trial is removed.
+No PANIC, TRAP or "terminated by signal" in either server log (read before step 6 removed it).
+Not run: `make demo`, `make verify`, any attack in what-to-attack-pg_agent_gate.md.
+An earlier attempt of the 19beta2 run, with the default Cargo home, failed at step 1's
+`cargo install` (the sandbox cannot write ~/.cargo/registry); it was discarded and redone as
+above.
+
+================================================================================= PostgreSQL 19beta2
++ export CARGO_HOME=/dev/shm/kitrun/cargohome-19 PGRX_HOME=/dev/shm/kitrun/pgrxhome-19 NO_COLOR=1 CARGO_TERM_COLOR=never
++ CARGO_HOME=/dev/shm/kitrun/cargohome-19
++ PGRX_HOME=/dev/shm/kitrun/pgrxhome-19
++ NO_COLOR=1
++ CARGO_TERM_COLOR=never
++ export PATH=/dev/shm/kitrun/cargohome-19/bin:~/.cargo/bin:~/.local/bin:~/pg19/bin:~/.bun/bin:/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/var/lib/snapd/snap/bin
++ PATH=/dev/shm/kitrun/cargohome-19/bin:~/.cargo/bin:~/.local/bin:~/pg19/bin:~/.bun/bin:/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/var/lib/snapd/snap/bin
++ git clone https://github.com/Manuelreyesbravo/pg_agent_gate
+Cloning into 'pg_agent_gate'...
++ cd pg_agent_gate
++ git checkout 2e4da3b
+Note: switching to '2e4da3b'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at 2e4da3b CHANGELOG: what changed since 0.4.3, none of it in the extension
++ cargo install cargo-pgrx --version 0.19.2 --locked
+    Updating crates.io index
+ Downloading crates ...
+  Downloaded cargo-pgrx v0.19.2
+  Installing cargo-pgrx v0.19.2
+    Updating crates.io index
+warning: package `chacha20 v0.10.0` in Cargo.lock is yanked in registry `crates-io`
+  |
+  = help: consider running without --locked
+warning: package `der v0.8.0` in Cargo.lock is yanked in registry `crates-io`
+  |
+  = help: consider running without --locked
+    Updating crates.io index
+ Downloading crates ...
+  Downloaded adler v1.0.2
+  Downloaded adler2 v2.0.1
+  Downloaded deranged v0.5.8
+  Downloaded addr2line v0.21.0
+  Downloaded foreign-types-shared v0.1.1
+  Downloaded aes v0.9.1
+  Downloaded env_proxy v0.4.1
+  Downloaded form_urlencoded v1.2.2
+  Downloaded equivalent v1.0.2
+  Downloaded fixedbitset v0.5.7
+  Downloaded find-msvc-tools v0.1.9
+  Downloaded futures-channel v0.3.31
+  Downloaded futures-core v0.3.32
+  Downloaded foreign-types v0.3.2
+  Downloaded digest v0.11.3
+  Downloaded displaydoc v0.2.6
+  Downloaded errno v0.3.14
+  Downloaded derive_destructure2 v0.1.3
+  Downloaded fastrand v2.3.0
+  Downloaded flate2 v1.1.9
+  Downloaded fallible-iterator v0.2.0
+  Downloaded foldhash v0.1.4
+  Downloaded eyre v0.6.8
+  Downloaded filetime v0.2.27
+  Downloaded hashbrown v0.15.5
+  Downloaded getrandom v0.2.17
+  Downloaded powerfmt v0.2.0
+  Downloaded miniz_oxide v0.7.4
+  Downloaded litemap v0.8.2
+  Downloaded futures-util v0.3.31
+  Downloaded icu_provider v2.2.0
+  Downloaded miniz_oxide v0.8.9
+  Downloaded getrandom v0.4.2
+  Downloaded log v0.4.32
+  Downloaded rand_core v0.10.1
+  Downloaded heck v0.5.0
+  Downloaded lock_api v0.4.12
+  Downloaded itoa v1.0.15
+  Downloaded icu_normalizer_data v2.2.0
+  Downloaded hashbrown v0.17.1
+  Downloaded memchr v2.8.1
+  Downloaded jobserver v0.1.34
+  Downloaded mio v0.8.11
+  Downloaded lzma-rust2 v0.16.4
+  Downloaded idna v1.1.0
+  Downloaded icu_collections v2.2.0
+  Downloaded futures-task v0.3.31
+  Downloaded jobslot v0.2.24
+  Downloaded http v1.4.1
+  Downloaded is_ci v1.2.0
+  Downloaded indenter v0.3.4
+  Downloaded num-conv v0.2.2
+  Downloaded icu_properties_data v2.2.0
+  Downloaded hmac v0.13.0
+  Downloaded indexmap v2.14.0
+  Downloaded libbz2-rs-sys v0.2.5
+  Downloaded idna_adapter v1.2.2
+  Downloaded postgres-types v0.2.14
+  Downloaded hex v0.4.3
+  Downloaded is_terminal_polyfill v1.48.2
+  Downloaded lazy_static v1.5.0
+  Downloaded openssl-macros v0.1.1
+  Downloaded owo-colors v4.0.0
+  Downloaded postgres-protocol v0.6.12
+  Downloaded icu_properties v2.2.0
+  Downloaded openssl-sys v0.9.116
+  Downloaded pin-project-lite v0.2.17
+  Downloaded object v0.39.1
+  Downloaded native-tls v0.2.18
+  Downloaded openssl v0.10.80
+  Downloaded pgrx-sql-entity-graph v0.19.2
+  Downloaded parking_lot_core v0.9.10
+  Downloaded percent-encoding v2.3.2
+  Downloaded matchers v0.2.0
+  Downloaded regex v1.12.3
+  Downloaded is-terminal v0.4.17
+  Downloaded object v0.32.2
+  Downloaded pbkdf2 v0.13.0
+  Downloaded pem-rfc7468 v1.0.0
+  Downloaded pgrx-pg-config v0.19.2
+  Downloaded futures-sink v0.3.32
+  Downloaded icu_normalizer v2.2.0
+  Downloaded inout v0.2.2
+  Downloaded regex-syntax v0.8.10
+  Downloaded httparse v1.10.1
+  Downloaded phf v0.13.1
+  Downloaded icu_locale_core v2.2.0
+  Downloaded uuid v1.23.2
+  Downloaded home v0.5.5
+  Downloaded nu-ansi-term v0.50.3
+  Downloaded gimli v0.28.1
+  Downloaded phf_shared v0.13.1
+  Downloaded pin-utils v0.1.0
+  Downloaded synstructure v0.13.2
+  Downloaded utf8parse v0.2.2
+  Downloaded regex-automata v0.4.14
+  Downloaded linux-raw-sys v0.12.1
+  Downloaded petgraph v0.8.3
+  Downloaded potential_utf v0.1.5
+  Downloaded base64ct v1.5.3
+  Downloaded hybrid-array v0.4.12
+  Downloaded zmij v1.0.21
+  Downloaded md-5 v0.11.0
+  Downloaded parking_lot v0.12.3
+  Downloaded thiserror-impl v2.0.18
+  Downloaded time-core v0.1.8
+  Downloaded unicode-bidi v0.3.18
+  Downloaded bumpalo v3.20.3
+  Downloaded pathsearch v0.2.0
+  Downloaded pkg-config v0.3.33
+  Downloaded camino v1.1.12
+  Downloaded yoke-derive v0.8.2
+  Downloaded zopfli v0.8.3
+  Downloaded anstyle-parse v0.2.7
+  Downloaded anyhow v1.0.100
+  Downloaded base64 v0.22.1
+  Downloaded constant_time_eq v0.4.2
+  Downloaded openssl-probe v0.2.1
+  Downloaded ppmd-rust v1.4.0
+  Downloaded proc-macro2 v1.0.101
+  Downloaded rand v0.10.1
+  Downloaded anstyle-query v1.1.5
+  Downloaded bzip2 v0.6.1
+  Downloaded clap_lex v1.1.0
+  Downloaded libc v0.2.186
+  Downloaded postgres v0.19.14
+  Downloaded bitflags v2.13.0
+  Downloaded cmov v0.5.4
+  Downloaded once_cell v1.21.4
+  Downloaded crc32fast v1.5.0
+  Downloaded clap v4.5.60
+  Downloaded quote v1.0.45
+  Downloaded strsim v0.11.1
+  Downloaded chacha20 v0.10.0
+  Downloaded tinystr v0.8.3
+  Downloaded cfg-if v1.0.4
+  Downloaded clap_derive v4.5.55
+  Downloaded zstd-sys v2.0.16+zstd.1.5.7
+  Downloaded autocfg v1.5.1
+  Downloaded anstream v0.6.21
+  Downloaded color-spantrace v0.3.0
+  Downloaded zstd v0.13.3
+  Downloaded tinyvec_macros v0.1.1
+  Downloaded crypto-common v0.2.2
+  Downloaded colorchoice v1.0.5
+  Downloaded serde_spanned v1.1.1
+  Downloaded bytes v1.11.1
+  Downloaded crates-index v3.14.0
+  Downloaded block-buffer v0.12.0
+  Downloaded cargo-platform v0.3.3
+  Downloaded cargo_metadata v0.23.1
+  Downloaded cc v1.2.63
+  Downloaded zstd-safe v7.2.4
+  Downloaded backtrace v0.3.69
+  Downloaded zlib-rs v0.6.3
+  Downloaded xattr v1.6.1
+  Downloaded zerovec v0.11.6
+  Downloaded which v8.0.2
+  Downloaded zip v8.6.0
+  Downloaded siphasher v1.0.3
+  Downloaded toml_parser v1.1.2+spec-1.1.0
+  Downloaded toml_writer v1.1.1+spec-1.1.0
+  Downloaded clap_builder v4.5.60
+  Downloaded color-eyre v0.6.5
+  Downloaded anstyle v1.0.14
+  Downloaded cfg_aliases v0.2.1
+  Downloaded cpubits v0.1.1
+  Downloaded const-oid v0.10.2
+  Downloaded convert_case v0.11.0
+  Downloaded byteorder v1.4.3
+  Downloaded clap-cargo v0.18.3
+  Downloaded cargo_toml v0.22.3
+  Downloaded cpufeatures v0.3.0
+  Downloaded async-trait v0.1.89
+  Downloaded borsh v1.6.1
+  Downloaded cipher v0.5.2
+  Downloaded zerovec-derive v0.11.3
+  Downloaded aho-corasick v1.1.4
+  Downloaded deflate64 v0.1.12
+  Downloaded toml_datetime v0.7.5+spec-1.1.0
+  Downloaded yoke v0.8.3
+  Downloaded semver v1.0.28
+  Downloaded smallvec v1.15.1
+  Downloaded zeroize v1.8.2
+  Downloaded zerofrom-derive v0.1.7
+  Downloaded rustc-hash v2.1.1
+  Downloaded stable_deref_trait v1.2.1
+  Downloaded sha1 v0.11.0
+  Downloaded terminal_size v0.4.4
+  Downloaded subtle v2.6.1
+  Downloaded tracing-error v0.2.1
+  Downloaded unescape v0.1.0
+  Downloaded utf8_iter v1.0.4
+  Downloaded untrusted v0.9.0
+  Downloaded zerofrom v0.1.8
+  Downloaded sharded-slab v0.1.7
+  Downloaded rustls-native-certs v0.8.4
+  Downloaded tracing-attributes v0.1.31
+  Downloaded thread_local v1.1.7
+  Downloaded supports-color v2.1.0
+  Downloaded toml_datetime v1.1.1+spec-1.1.0
+  Downloaded whoami v2.1.2
+  Downloaded utf8-zero v0.8.1
+  Downloaded rustc-demangle v0.1.27
+  Downloaded scopeguard v1.2.0
+  Downloaded tracing-log v0.2.0
+  Downloaded writeable v0.6.3
+  Downloaded shlex v2.0.1
+  Downloaded stringprep v0.1.5
+  Downloaded rustc-stable-hash v0.1.2
+  Downloaded smol_str v0.3.2
+  Downloaded thiserror v2.0.18
+  Downloaded rustls-platform-verifier v0.6.2
+  Downloaded ureq-proto v0.6.0
+  Downloaded simd-adler32 v0.3.9
+  Downloaded slab v0.4.12
+  Downloaded tempfile v3.27.0
+  Downloaded unicode-properties v0.1.4
+  Downloaded rustls-pki-types v1.14.1
+  Downloaded sha2 v0.11.0
+  Downloaded unicode-ident v1.0.22
+  Downloaded ctutils v0.4.2
+  Downloaded tinyvec v1.11.0
+  Downloaded serde v1.0.228
+  Downloaded socket2 v0.4.10
+  Downloaded serde-xml-rs v0.8.2
+  Downloaded toml v0.9.12+spec-1.1.0
+  Downloaded toml v1.1.2+spec-1.1.0
+  Downloaded serde_derive v1.0.228
+  Downloaded tar v0.4.46
+  Downloaded serde_core v1.0.228
+  Downloaded tracing-core v0.1.36
+  Downloaded xml v1.3.0
+  Downloaded toml_edit v0.25.12+spec-1.1.0
+  Downloaded socket2 v0.6.4
+  Downloaded url v2.5.8
+  Downloaded unicode-normalization v0.1.25
+  Downloaded zerotrie v0.2.4
+  Downloaded rustls-webpki v0.103.13
+  Downloaded typenum v1.20.1
+  Downloaded tokio-postgres v0.7.18
+  Downloaded unicode-segmentation v1.12.0
+  Downloaded der v0.8.0
+  Downloaded typed-path v0.12.3
+  Downloaded tokio-util v0.7.10
+  Downloaded serde_json v1.0.150
+  Downloaded ureq v3.3.0
+  Downloaded tracing-subscriber v0.3.23
+  Downloaded webpki-root-certs v1.0.1
+  Downloaded winnow v0.7.15
+  Downloaded winnow v1.0.3
+  Downloaded time v0.3.47
+  Downloaded vcpkg v0.2.15
+  Downloaded webpki-roots v1.0.1
+  Downloaded syn v2.0.117
+  Downloaded rustix v1.1.4
+  Downloaded rustls v0.23.40
+  Downloaded tracing v0.1.44
+  Downloaded tokio v1.29.1
+  Downloaded ring v0.17.14
+   Compiling libc v0.2.186
+   Compiling quote v1.0.45
+   Compiling proc-macro2 v1.0.101
+   Compiling unicode-ident v1.0.22
+   Compiling cfg-if v1.0.4
+   Compiling find-msvc-tools v0.1.9
+   Compiling shlex v2.0.1
+   Compiling serde_core v1.0.228
+   Compiling zeroize v1.8.2
+   Compiling memchr v2.8.1
+   Compiling typenum v1.20.1
+   Compiling once_cell v1.21.4
+   Compiling log v0.4.32
+   Compiling pkg-config v0.3.33
+   Compiling stable_deref_trait v1.2.1
+   Compiling smallvec v1.15.1
+   Compiling cmov v0.5.4
+   Compiling const-oid v0.10.2
+   Compiling itoa v1.0.15
+   Compiling rand_core v0.10.1
+   Compiling getrandom v0.4.2
+   Compiling serde v1.0.228
+   Compiling bitflags v2.13.0
+   Compiling cpufeatures v0.3.0
+   Compiling pin-project-lite v0.2.17
+   Compiling bytes v1.11.1
+   Compiling zmij v1.0.21
+   Compiling autocfg v1.5.1
+   Compiling litemap v0.8.2
+   Compiling rustix v1.1.4
+   Compiling writeable v0.6.3
+   Compiling serde_json v1.0.150
+   Compiling icu_normalizer_data v2.2.0
+   Compiling vcpkg v0.2.15
+   Compiling ctutils v0.4.2
+   Compiling tracing-core v0.1.36
+   Compiling linux-raw-sys v0.12.1
+   Compiling utf8_iter v1.0.4
+   Compiling icu_properties_data v2.2.0
+   Compiling thiserror v2.0.18
+   Compiling rustls-pki-types v1.14.1
+   Compiling percent-encoding v2.3.2
+   Compiling winnow v1.0.3
+   Compiling tinyvec_macros v0.1.1
+   Compiling regex-syntax v0.8.10
+   Compiling aho-corasick v1.1.4
+   Compiling tinyvec v1.11.0
+   Compiling crc32fast v1.5.0
+   Compiling base64 v0.22.1
+   Compiling toml_writer v1.1.1+spec-1.1.0
+   Compiling lock_api v0.4.12
+   Compiling tokio v1.29.1
+   Compiling chacha20 v0.10.0
+   Compiling futures-sink v0.3.32
+   Compiling lazy_static v1.5.0
+   Compiling futures-core v0.3.32
+   Compiling simd-adler32 v0.3.9
+   Compiling untrusted v0.9.0
+   Compiling unicode-bidi v0.3.18
+   Compiling utf8parse v0.2.2
+   Compiling unicode-properties v0.1.4
+   Compiling hybrid-array v0.4.12
+   Compiling parking_lot_core v0.9.10
+   Compiling scopeguard v1.2.0
+   Compiling hashbrown v0.17.1
+   Compiling equivalent v1.0.2
+   Compiling unicode-normalization v0.1.25
+   Compiling is_ci v1.2.0
+   Compiling eyre v0.6.8
+   Compiling anstyle-parse v0.2.7
+   Compiling syn v2.0.117
+   Compiling sharded-slab v0.1.7
+   Compiling tracing-log v0.2.0
+   Compiling thread_local v1.1.7
+   Compiling rustls v0.23.40
+   Compiling fallible-iterator v0.2.0
+   Compiling jobserver v0.1.34
+   Compiling anyhow v1.0.100
+   Compiling anstyle-query v1.1.5
+   Compiling byteorder v1.4.3
+   Compiling foreign-types-shared v0.1.1
+   Compiling crypto-common v0.2.2
+   Compiling block-buffer v0.12.0
+   Compiling nu-ansi-term v0.50.3
+   Compiling anstyle v1.0.14
+   Compiling openssl-probe v0.2.1
+   Compiling is-terminal v0.4.17
+   Compiling getrandom v0.2.17
+   Compiling stringprep v0.1.5
+   Compiling cc v1.2.63
+   Compiling supports-color v2.1.0
+   Compiling is_terminal_polyfill v1.48.2
+   Compiling socket2 v0.4.10
+   Compiling mio v0.8.11
+   Compiling indexmap v2.14.0
+   Compiling indenter v0.3.4
+   Compiling camino v1.1.12
+   Compiling openssl v0.10.80
+   Compiling adler2 v2.0.1
+   Compiling rand v0.10.1
+   Compiling siphasher v1.0.3
+   Compiling httparse v1.10.1
+   Compiling zstd-safe v7.2.4
+   Compiling colorchoice v1.0.5
+   Compiling miniz_oxide v0.8.9
+   Compiling anstream v0.6.21
+   Compiling phf_shared v0.13.1
+   Compiling uuid v1.23.2
+   Compiling owo-colors v4.0.0
+   Compiling foreign-types v0.3.2
+   Compiling toml_parser v1.1.2+spec-1.1.0
+   Compiling inout v0.2.2
+   Compiling digest v0.11.3
+   Compiling regex-automata v0.4.14
+   Compiling http v1.4.1
+   Compiling form_urlencoded v1.2.2
+   Compiling heck v0.5.0
+   Compiling winnow v0.7.15
+   Compiling clap_lex v1.1.0
+   Compiling zlib-rs v0.6.3
+   Compiling hmac v0.13.0
+   Compiling sha2 v0.11.0
+   Compiling serde_spanned v1.1.1
+   Compiling toml_datetime v1.1.1+spec-1.1.0
+   Compiling md-5 v0.11.0
+   Compiling semver v1.0.28
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling strsim v0.11.1
+   Compiling gimli v0.28.1
+   Compiling futures-task v0.3.31
+   Compiling adler v1.0.2
+   Compiling color-spantrace v0.3.0
+   Compiling pin-utils v0.1.0
+   Compiling foldhash v0.1.4
+   Compiling base64ct v1.5.3
+   Compiling terminal_size v0.4.4
+   Compiling subtle v2.6.1
+   Compiling native-tls v0.2.18
+   Compiling openssl-sys v0.9.116
+   Compiling ring v0.17.14
+   Compiling zstd-sys v2.0.16+zstd.1.5.7
+   Compiling backtrace v0.3.69
+   Compiling powerfmt v0.2.0
+   Compiling clap_builder v4.5.60
+   Compiling pem-rfc7468 v1.0.0
+   Compiling postgres-protocol v0.6.12
+   Compiling deranged v0.5.8
+   Compiling hashbrown v0.15.5
+   Compiling futures-util v0.3.31
+   Compiling miniz_oxide v0.7.4
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling postgres-types v0.2.14
+   Compiling toml v1.1.2+spec-1.1.0
+   Compiling cargo-platform v0.3.3
+   Compiling parking_lot v0.12.3
+   Compiling cipher v0.5.2
+   Compiling synstructure v0.13.2
+   Compiling phf v0.13.1
+   Compiling flate2 v1.1.9
+   Compiling rustls-native-certs v0.8.4
+   Compiling whoami v2.1.2
+   Compiling socket2 v0.6.4
+   Compiling futures-channel v0.3.31
+   Compiling object v0.32.2
+   Compiling addr2line v0.21.0
+   Compiling num-conv v0.2.2
+   Compiling cpubits v0.1.1
+   Compiling time-core v0.1.8
+   Compiling libbz2-rs-sys v0.2.5
+   Compiling object v0.39.1
+   Compiling rustc-demangle v0.1.27
+   Compiling bumpalo v3.20.3
+   Compiling unicode-segmentation v1.12.0
+   Compiling fixedbitset v0.5.7
+   Compiling zopfli v0.8.3
+   Compiling time v0.3.47
+   Compiling aes v0.9.1
+   Compiling convert_case v0.11.0
+   Compiling petgraph v0.8.3
+   Compiling ureq-proto v0.6.0
+   Compiling matchers v0.2.0
+   Compiling zerofrom-derive v0.1.7
+   Compiling yoke-derive v0.8.2
+   Compiling zerovec-derive v0.11.3
+   Compiling displaydoc v0.2.6
+   Compiling serde_derive v1.0.228
+   Compiling tracing-attributes v0.1.31
+   Compiling thiserror-impl v2.0.18
+   Compiling openssl-macros v0.1.1
+   Compiling async-trait v0.1.89
+   Compiling clap_derive v4.5.55
+   Compiling bzip2 v0.6.1
+   Compiling zerofrom v0.1.8
+   Compiling derive_destructure2 v0.1.3
+   Compiling tracing v0.1.44
+   Compiling yoke v0.8.3
+   Compiling pathsearch v0.2.0
+   Compiling tracing-subscriber v0.3.23
+   Compiling tokio-util v0.7.10
+   Compiling zerovec v0.11.6
+   Compiling zerotrie v0.2.4
+   Compiling der v0.8.0
+   Compiling lzma-rust2 v0.16.4
+   Compiling xattr v1.6.1
+   Compiling pbkdf2 v0.13.0
+   Compiling sha1 v0.11.0
+   Compiling tokio-postgres v0.7.18
+   Compiling filetime v0.2.27
+   Compiling tinystr v0.8.3
+   Compiling potential_utf v0.1.5
+   Compiling webpki-roots v1.0.1
+   Compiling webpki-root-certs v1.0.1
+   Compiling utf8-zero v0.8.1
+   Compiling home v0.5.5
+   Compiling icu_locale_core v2.2.0
+   Compiling icu_collections v2.2.0
+   Compiling constant_time_eq v0.4.2
+   Compiling fastrand v2.3.0
+   Compiling ppmd-rust v1.4.0
+   Compiling rustc-hash v2.1.1
+   Compiling typed-path v0.12.3
+   Compiling unescape v0.1.0
+   Compiling deflate64 v0.1.12
+   Compiling clap v4.5.60
+   Compiling cargo-pgrx v0.19.2
+   Compiling xml v1.3.0
+   Compiling rustc-stable-hash v0.1.2
+   Compiling tempfile v3.27.0
+   Compiling tar v0.4.46
+   Compiling jobslot v0.2.24
+   Compiling regex v1.12.3
+   Compiling tracing-error v0.2.1
+   Compiling toml_edit v0.25.12+spec-1.1.0
+   Compiling icu_provider v2.2.0
+   Compiling hex v0.4.3
+   Compiling icu_normalizer v2.2.0
+   Compiling icu_properties v2.2.0
+   Compiling cargo_metadata v0.23.1
+   Compiling smol_str v0.3.2
+   Compiling cargo_toml v0.22.3
+   Compiling crates-index v3.14.0
+   Compiling postgres v0.19.14
+   Compiling idna_adapter v1.2.2
+   Compiling idna v1.1.0
+   Compiling color-eyre v0.6.5
+   Compiling serde-xml-rs v0.8.2
+   Compiling which v8.0.2
+   Compiling clap-cargo v0.18.3
+   Compiling url v2.5.8
+   Compiling pgrx-sql-entity-graph v0.19.2
+   Compiling env_proxy v0.4.1
+   Compiling pgrx-pg-config v0.19.2
+   Compiling rustls-webpki v0.103.13
+   Compiling rustls-platform-verifier v0.6.2
+   Compiling ureq v3.3.0
+   Compiling zstd v0.13.3
+   Compiling zip v8.6.0
+    Finished `release` profile [optimized] target(s) in 40.71s
+  Installing /dev/shm/kitrun/cargohome-19/bin/cargo-pgrx
+   Installed package `cargo-pgrx v0.19.2` (executable `cargo-pgrx`)
++ export PG_CONFIG=/dev/shm/kitrun/pg19/bin/pg_config
++ PG_CONFIG=/dev/shm/kitrun/pg19/bin/pg_config
++ cargo pgrx init --pg19 /dev/shm/kitrun/pg19/bin/pg_config
+   Validating /dev/shm/kitrun/pg19/bin/pg_config
+ Initializing data directory at /dev/shm/kitrun/pgrxhome-19/data-19
++ cargo pgrx install --release --pg-config /dev/shm/kitrun/pg19/bin/pg_config
+       Using PgConfig("pg19") and `pg_config` from /dev/shm/kitrun/pg19/bin/pg_config
+    Building extension with features pg19
+     Running command "~/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo" "rustc" "--lib" "--manifest-path" "/dev/shm/kitrun/gate19/pg_agent_gate/Cargo.toml" "--release" "--features" "pg19" "--no-default-features" "--message-format=json-render-diagnostics" "--" "-C" "link-arg=-Wl,--no-gc-sections"
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.24
+   Compiling stable_deref_trait v1.2.1
+   Compiling serde_core v1.0.229
+   Compiling libc v0.2.189
+   Compiling autocfg v1.5.1
+   Compiling thiserror v2.0.20
+   Compiling writeable v0.6.4
+   Compiling memchr v2.8.3
+   Compiling litemap v0.8.3
+   Compiling zmij v1.0.23
+   Compiling serde v1.0.229
+   Compiling icu_properties_data v2.3.0
+   Compiling utf8_iter v1.0.4
+   Compiling icu_normalizer_data v2.3.0
+   Compiling winnow v1.0.4
+   Compiling serde_json v1.0.151
+   Compiling smallvec v1.16.1
+   Compiling glob v0.3.4
+   Compiling anyhow v1.0.104
+   Compiling indenter v0.3.4
+   Compiling shlex v2.0.1
+   Compiling once_cell v1.21.4
+   Compiling toml_writer v1.1.2+spec-1.1.0
+   Compiling find-msvc-tools v0.1.12
+   Compiling percent-encoding v2.3.2
+   Compiling cfg-if v1.0.4
+   Compiling minimal-lexical v0.2.1
+   Compiling winnow v0.7.15
+   Compiling is_ci v1.2.0
+   Compiling regex-syntax v0.8.11
+   Compiling libloading v0.8.9
+   Compiling itoa v1.0.18
+   Compiling either v1.18.0
+   Compiling form_urlencoded v1.2.2
+   Compiling supports-color v3.0.2
+   Compiling cc v1.4.6
+   Compiling bindgen v0.72.1
+   Compiling equivalent v1.0.2
+   Compiling owo-colors v4.4.0
+   Compiling eyre v0.6.14
+   Compiling foldhash v0.1.5
+   Compiling hashbrown v0.17.1
+   Compiling shlex v1.3.0
+   Compiling same-file v1.0.6
+   Compiling bitflags v2.13.2
+   Compiling rustc-hash v2.1.3
+   Compiling clang-sys v1.9.1
+   Compiling toml_parser v1.1.3+spec-1.1.0
+   Compiling itertools v0.13.0
+   Compiling unicode-segmentation v1.13.3
+   Compiling hashbrown v0.15.5
+   Compiling walkdir v2.5.0
+   Compiling aho-corasick v1.1.5
+   Compiling nom v7.1.3
+   Compiling fixedbitset v0.5.7
+   Compiling radium v0.7.0
+   Compiling unescape v0.1.0
+   Compiling getrandom v0.4.3
+   Compiling indexmap v2.14.2
+   Compiling convert_case v0.11.0
+   Compiling syn v3.0.5
+   Compiling syn v2.0.119
+   Compiling tap v1.0.1
+   Compiling wyz v0.5.1
+   Compiling funty v2.0.0
+   Compiling half v1.8.3
+   Compiling seahash v4.1.0
+   Compiling pathsearch v0.2.0
+   Compiling uuid v1.26.1
+   Compiling petgraph v0.8.3
+   Compiling cee-scape v0.2.0
+   Compiling bitvec v1.1.1
+   Compiling regex-automata v0.4.18
+   Compiling cexpr v0.6.0
+   Compiling serde_spanned v1.1.1
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling toml_datetime v1.1.1+spec-1.1.0
+   Compiling toml v1.1.6+spec-1.1.0
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling regex v1.13.1
+   Compiling zerovec-derive v0.11.6
+   Compiling displaydoc v0.2.7
+   Compiling thiserror-impl v2.0.20
+   Compiling serde_derive v1.0.229
+   Compiling pgrx-sql-entity-graph v0.19.2
+   Compiling synstructure v0.13.2
+   Compiling zerofrom-derive v0.1.7
+   Compiling yoke-derive v0.8.2
+   Compiling enum-map-derive v0.17.0
+   Compiling enum-map v2.7.3
+   Compiling cargo_toml v0.22.3
+   Compiling zerofrom v0.1.8
+   Compiling yoke v0.8.3
+   Compiling serde_cbor v0.11.2
+   Compiling zerovec v0.11.8
+   Compiling zerotrie v0.2.5
+   Compiling tinystr v0.8.4
+   Compiling potential_utf v0.1.6
+   Compiling icu_collections v2.3.0
+   Compiling icu_locale_core v2.3.0
+   Compiling icu_provider v2.3.1
+   Compiling pgrx-macros v0.19.2
+   Compiling icu_properties v2.3.0
+   Compiling icu_normalizer v2.3.0
+   Compiling idna_adapter v1.2.2
+   Compiling idna v1.1.0
+   Compiling url v2.5.8
+   Compiling pgrx-pg-config v0.19.2
+   Compiling pgrx-bindgen v0.19.2
+   Compiling pgrx-pg-sys v0.19.2
+   Compiling pgrx v0.19.2
+   Compiling pg_agent_gate v0.4.3 (/dev/shm/kitrun/gate19/pg_agent_gate)
+    Finished `release` profile [optimized] target(s) in 36.02s
+  Installing extension
+     Copying control file to /dev/shm/kitrun/pg19/share/postgresql/extension/pg_agent_gate.control
+     Copying shared library to /dev/shm/kitrun/pg19/lib/postgresql/pg_agent_gate.so
+  Discovered 11 SQL entities: 0 schemas (0 unique), 9 functions, 0 types, 0 enums, 2 sqls, 0 ords, 0 hashes, 0 aggregates, 0 triggers
+     Writing SQL entities to /dev/shm/kitrun/pg19/share/postgresql/extension/pg_agent_gate--0.4.3.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg19/share/postgresql/extension/pg_agent_gate--0.4.2--0.4.3.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg19/share/postgresql/extension/pg_agent_gate--0.4.1--0.4.3.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg19/share/postgresql/extension/pg_agent_gate--0.4.0--0.4.1.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg19/share/postgresql/extension/pg_agent_gate--0.3.0--0.4.0.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg19/share/postgresql/extension/pg_agent_gate--0.2.9--0.2.10.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg19/share/postgresql/extension/pg_agent_gate--0.2.8--0.2.9.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg19/share/postgresql/extension/pg_agent_gate--0.2.7--0.2.8.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg19/share/postgresql/extension/pg_agent_gate--0.2.6--0.2.7.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg19/share/postgresql/extension/pg_agent_gate--0.2.5--0.2.6.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg19/share/postgresql/extension/pg_agent_gate--0.2.4--0.2.5.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg19/share/postgresql/extension/pg_agent_gate--0.2.3--0.2.4.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg19/share/postgresql/extension/pg_agent_gate--0.2.2--0.2.3.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg19/share/postgresql/extension/pg_agent_gate--0.2.15--0.3.0.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg19/share/postgresql/extension/pg_agent_gate--0.2.14--0.2.15.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg19/share/postgresql/extension/pg_agent_gate--0.2.13--0.2.14.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg19/share/postgresql/extension/pg_agent_gate--0.2.12--0.2.13.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg19/share/postgresql/extension/pg_agent_gate--0.2.11--0.2.12.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg19/share/postgresql/extension/pg_agent_gate--0.2.10--0.2.11.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg19/share/postgresql/extension/pg_agent_gate--0.2.1--0.2.2.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg19/share/postgresql/extension/pg_agent_gate--0.2.0--0.2.1.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg19/share/postgresql/extension/pg_agent_gate--0.1.0--0.2.0.sql
+    Finished installing pg_agent_gate
+++ /dev/shm/kitrun/pg19/bin/pg_config --bindir
++ export PATH=/dev/shm/kitrun/pg19/bin:/dev/shm/kitrun/cargohome-19/bin:~/.cargo/bin:~/.local/bin:~/pg19/bin:~/.bun/bin:/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/var/lib/snapd/snap/bin
++ PATH=/dev/shm/kitrun/pg19/bin:/dev/shm/kitrun/cargohome-19/bin:~/.cargo/bin:~/.local/bin:~/pg19/bin:~/.bun/bin:/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/var/lib/snapd/snap/bin
++ export DATA=/tmp/gate-trial PGPORT=5571 PGHOST=/tmp/gate-trial
++ DATA=/tmp/gate-trial
++ PGPORT=5571
++ PGHOST=/tmp/gate-trial
++ initdb -D /tmp/gate-trial --auth=trust -E UTF8 -U postgres
+The files belonging to this database system will be owned by user "manu".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.UTF-8".
+The default text search configuration will be set to "english".
+
+Data page checksums are enabled.
+
+creating directory /tmp/gate-trial ... ok
+creating subdirectories ... ok
+selecting dynamic shared memory implementation ... posix
+selecting default "max_connections" ... 100
+selecting default "shared_buffers" ... 128MB
+selecting default time zone ... America/Santiago
+creating configuration files ... ok
+running bootstrap script ... ok
+performing post-bootstrap initialization ... ok
+syncing data to disk ... ok
+
+Success. You can now start the database server using:
+
+    pg_ctl -D /tmp/gate-trial -l logfile start
+
++ echo 'shared_preload_libraries = '\''pg_agent_gate'\'''
++ pg_ctl -D /tmp/gate-trial -l /tmp/gate-trial/server.log -w -o '-p 5571 -k /tmp/gate-trial -c listen_addresses='\'''\''' start
+waiting for server to start.... done
+server started
++ psql -X -At -U postgres -d postgres -v ON_ERROR_STOP=1
+CREATE EXTENSION
+CREATE TABLE
+INSERT 0 3
+CREATE ROLE
+GRANT
+GRANT
+{"role": "billing_agent", "agent": "billing", "max_rows": 1, "allow_ddl": false, "enforced_by": "shared_preload_libraries", "takes_effect": "on the next connection of that role; existing connections are not behind the gate", "window_seconds": 3600, "requires_approval": false, "max_rows_per_window": 1}
++ psql -X -At -U billing_agent -d postgres
+{"role": "billing_agent", "agent": "billing", "verbs": ["discover", "propose", "dry_run", "commit", "propose_and_commit", "acts", "whoami"], "version": "0.4.3", "enforced": true, "is_agent": true, "attempt_durability": "fast", "loaded_at_server_start": true}
+ERROR:  pg_agent_gate: this session belongs to agent "billing": it proposes, it does not execute
+DETAIL:  DELETE does not reach the database from an agent session
+HINT:  Call agent_gate.propose(sql, intent), then agent_gate.dry_run(proposal) or agent_gate.commit(proposal) -- or agent_gate.propose_and_commit(sql, intent) for both in one call. agent_gate.discover() shows what this agent may touch.
+{"ok": true, "kind": "write", "next": "agent_gate.dry_run(proposal) shows the exact effect; agent_gate.commit(proposal) makes it real", "checks": [{"check": "parses", "detail": "PostgreSQL's parser accepts it", "passed": true}, {"check": "single_statement", "detail": "exactly one statement", "passed": true}, {"check": "kind_allowed", "detail": "write statement (T_UpdateStmt)", "passed": true}, {"check": "no_writing_cte", "detail": "no CTE changes data: max_rows sees every row it touches", "passed": true}, {"check": "keeps_its_context", "detail": "nothing in the statement calls set_config()", "passed": true}, {"check": "no_amplification", "detail": "no unsafe cascade, trigger or rule on this write's target (or an inheritance child of it) can amplify it beyond the agent's reach", "passed": true}, {"check": "no_hidden_sql", "detail": "no function that runs SQL from a text is called", "passed": true}, {"check": "no_opaque_function", "detail": "every function called is a vetted built-in, or a user function that is neither volatile nor SECURITY DEFINER, is not this agent's to alter, and sets no parameter an agent may not set", "passed": true}, {"check": "changes_only_rows", "detail": "no built-in that changes state outside rows (session locks, large objects, setval, the WAL) is called", "passed": true}, {"check": "resolves", "detail": "the planner resolved every table, column, type and function without executing the statement; it was planned only after every check above passed", "passed": true}], "proposal": 1, "estimated_rows": 1.0, "expires_in_seconds": 900}
+{"kind": "write", "mode": "dry_run", "note": "nothing was kept; effects outside transactions (sequence values, session advisory locks) are not undone", "rows": [{"after": {"id": 1, "name": "Ana", "plan": "pro"}, "before": {"id": 1, "name": "Ana", "plan": "free"}}], "error": null, "reason": null, "outcome": "rolled_back", "proposal": 1, "execution": 1, "truncated": false, "assertions": [], "duration_ms": 2.8870649999999998, "rows_affected": 1, "rows_returned": 1}
+{"kind": "write", "mode": "commit", "note": "", "rows": [{"after": {"id": 1, "name": "Ana", "plan": "pro"}, "before": {"id": 1, "name": "Ana", "plan": "free"}}], "error": null, "reason": null, "outcome": "kept", "proposal": 1, "execution": 2, "truncated": false, "assertions": [], "duration_ms": 1.6655559999999998, "rows_affected": 1, "rows_returned": 1}
+{"commit": {"kind": "write", "mode": "commit", "note": "", "rows": [{"after": {"id": 2, "name": "Bo", "plan": "free"}, "before": {"id": 2, "name": "Bo", "plan": "free"}}, {"after": {"id": 3, "name": "Cy", "plan": "free"}, "before": {"id": 3, "name": "Cy", "plan": "free"}}, {"after": {"id": 1, "name": "Ana", "plan": "free"}, "before": {"id": 1, "name": "Ana", "plan": "pro"}}], "error": null, "reason": "it touched 3 rows, more than this agent may change in one statement", "outcome": "aborted", "proposal": 2, "execution": 3, "truncated": false, "assertions": [], "duration_ms": 0.9122870000000001, "rows_affected": 3, "rows_returned": 3}, "outcome": "aborted", "proposal": {"ok": true, "kind": "write", "next": "committed in this same call: see commit", "checks": [{"check": "parses", "detail": "PostgreSQL's parser accepts it", "passed": true}, {"check": "single_statement", "detail": "exactly one statement", "passed": true}, {"check": "kind_allowed", "detail": "write statement (T_UpdateStmt)", "passed": true}, {"check": "no_writing_cte", "detail": "no CTE changes data: max_rows sees every row it touches", "passed": true}, {"check": "keeps_its_context", "detail": "nothing in the statement calls set_config()", "passed": true}, {"check": "no_amplification", "detail": "no unsafe cascade, trigger or rule on this write's target (or an inheritance child of it) can amplify it beyond the agent's reach", "passed": true}, {"check": "no_hidden_sql", "detail": "no function that runs SQL from a text is called", "passed": true}, {"check": "no_opaque_function", "detail": "every function called is a vetted built-in, or a user function that is neither volatile nor SECURITY DEFINER, is not this agent's to alter, and sets no parameter an agent may not set", "passed": true}, {"check": "changes_only_rows", "detail": "no built-in that changes state outside rows (session locks, large objects, setval, the WAL) is called", "passed": true}, {"check": "resolves", "detail": "the planner resolved every table, column, type and function without executing the statement; it was planned only after every check above passed", "passed": true}], "proposal": 2, "estimated_rows": 850.0, "expires_in_seconds": 900}}
+{"ok": false, "kind": "ddl", "next": "fix what failed and propose again", "checks": [{"check": "parses", "detail": "PostgreSQL's parser accepts it", "passed": true}, {"check": "single_statement", "detail": "exactly one statement", "passed": true}, {"check": "kind_allowed", "detail": "T_DropStmt changes the schema or the server, and this agent is not allowed DDL", "passed": false}], "proposal": 3, "estimated_rows": null, "expires_in_seconds": 900}
+[{"ok": false, "sql": "drop table customers", "kind": "ddl", "intent": "clean up", "proposal": 3, "executions": [], "proposed_at": "2026-11-13T21:48:04.290944-03:00"}, {"ok": true, "sql": "update customers set plan = 'free'", "kind": "write", "intent": "reset every plan", "proposal": 2, "executions": [{"at": "2026-11-13T21:48:04.289712-03:00", "mode": "commit", "reason": "it touched 3 rows, more than this agent may change in one statement", "outcome": "aborted", "rows_affected": 3}], "proposed_at": "2026-11-13T21:48:04.28961-03:00"}, {"ok": true, "sql": "update customers set plan = 'pro' where id = $1::int", "kind": "write", "intent": "upgrade the customer who asked", "proposal": 1, "executions": [{"at": "2026-11-13T21:48:04.284012-03:00", "mode": "dry_run", "outcome": "rolled_back", "rows_affected": 1}, {"at": "2026-11-13T21:48:04.28722-03:00", "mode": "commit", "outcome": "kept", "rows_affected": 1}], "proposed_at": "2026-11-13T21:48:04.283447-03:00"}]
++ psql -X -U postgres -d postgres -c 'TABLE customers ORDER BY id'
+ id | name | plan 
+----+------+------
+  1 | Ana  | pro
+  2 | Bo   | free
+  3 | Cy   | free
+(3 rows)
+
++ pg_ctl -D /tmp/gate-trial -m fast -w stop
+waiting for server to shut down.... done
+server stopped
++ rm -rf /tmp/gate-trial
+rc=0
+
+==================================================================================== PostgreSQL 18.6
++ export CARGO_HOME=/dev/shm/kitrun/cargohome-18 PGRX_HOME=/dev/shm/kitrun/pgrxhome-18 NO_COLOR=1 CARGO_TERM_COLOR=never
++ CARGO_HOME=/dev/shm/kitrun/cargohome-18
++ PGRX_HOME=/dev/shm/kitrun/pgrxhome-18
++ NO_COLOR=1
++ CARGO_TERM_COLOR=never
++ export PATH=/dev/shm/kitrun/cargohome-18/bin:~/.cargo/bin:~/.local/bin:~/pg19/bin:~/.bun/bin:/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/var/lib/snapd/snap/bin
++ PATH=/dev/shm/kitrun/cargohome-18/bin:~/.cargo/bin:~/.local/bin:~/pg19/bin:~/.bun/bin:/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/var/lib/snapd/snap/bin
++ git clone https://github.com/Manuelreyesbravo/pg_agent_gate
+Cloning into 'pg_agent_gate'...
++ cd pg_agent_gate
++ git checkout 2e4da3b
+Note: switching to '2e4da3b'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at 2e4da3b CHANGELOG: what changed since 0.4.3, none of it in the extension
++ cargo install cargo-pgrx --version 0.19.2 --locked
+    Updating crates.io index
+ Downloading crates ...
+  Downloaded cargo-pgrx v0.19.2
+  Installing cargo-pgrx v0.19.2
+    Updating crates.io index
+warning: package `chacha20 v0.10.0` in Cargo.lock is yanked in registry `crates-io`
+  |
+  = help: consider running without --locked
+warning: package `der v0.8.0` in Cargo.lock is yanked in registry `crates-io`
+  |
+  = help: consider running without --locked
+    Updating crates.io index
+ Downloading crates ...
+  Downloaded adler v1.0.2
+  Downloaded adler2 v2.0.1
+  Downloaded deranged v0.5.8
+  Downloaded addr2line v0.21.0
+  Downloaded env_proxy v0.4.1
+  Downloaded fastrand v2.3.0
+  Downloaded equivalent v1.0.2
+  Downloaded errno v0.3.14
+  Downloaded foldhash v0.1.4
+  Downloaded foreign-types-shared v0.1.1
+  Downloaded foreign-types v0.3.2
+  Downloaded derive_destructure2 v0.1.3
+  Downloaded displaydoc v0.2.6
+  Downloaded futures-channel v0.3.31
+  Downloaded fixedbitset v0.5.7
+  Downloaded aes v0.9.1
+  Downloaded find-msvc-tools v0.1.9
+  Downloaded digest v0.11.3
+  Downloaded eyre v0.6.8
+  Downloaded fallible-iterator v0.2.0
+  Downloaded flate2 v1.1.9
+  Downloaded form_urlencoded v1.2.2
+  Downloaded filetime v0.2.27
+  Downloaded futures-core v0.3.32
+  Downloaded lazy_static v1.5.0
+  Downloaded powerfmt v0.2.0
+  Downloaded nu-ansi-term v0.50.3
+  Downloaded openssl-probe v0.2.1
+  Downloaded is_terminal_polyfill v1.48.2
+  Downloaded is-terminal v0.4.17
+  Downloaded icu_provider v2.2.0
+  Downloaded lock_api v0.4.12
+  Downloaded libbz2-rs-sys v0.2.5
+  Downloaded home v0.5.5
+  Downloaded is_ci v1.2.0
+  Downloaded serde_spanned v1.1.1
+  Downloaded parking_lot v0.12.3
+  Downloaded futures-sink v0.3.32
+  Downloaded postgres-types v0.2.14
+  Downloaded pathsearch v0.2.0
+  Downloaded phf v0.13.1
+  Downloaded rand_core v0.10.1
+  Downloaded icu_normalizer v2.2.0
+  Downloaded getrandom v0.2.17
+  Downloaded hmac v0.13.0
+  Downloaded openssl-macros v0.1.1
+  Downloaded md-5 v0.11.0
+  Downloaded itoa v1.0.15
+  Downloaded postgres v0.19.14
+  Downloaded matchers v0.2.0
+  Downloaded http v1.4.1
+  Downloaded scopeguard v1.2.0
+  Downloaded sha1 v0.11.0
+  Downloaded hex v0.4.3
+  Downloaded log v0.4.32
+  Downloaded futures-task v0.3.31
+  Downloaded httparse v1.10.1
+  Downloaded miniz_oxide v0.7.4
+  Downloaded pbkdf2 v0.13.0
+  Downloaded litemap v0.8.2
+  Downloaded jobserver v0.1.34
+  Downloaded icu_properties v2.2.0
+  Downloaded postgres-protocol v0.6.12
+  Downloaded rustc-demangle v0.1.27
+  Downloaded phf_shared v0.13.1
+  Downloaded native-tls v0.2.18
+  Downloaded rustc-hash v2.1.1
+  Downloaded icu_locale_core v2.2.0
+  Downloaded rustls-native-certs v0.8.4
+  Downloaded hashbrown v0.15.5
+  Downloaded openssl-sys v0.9.116
+  Downloaded hashbrown v0.17.1
+  Downloaded rustc-stable-hash v0.1.2
+  Downloaded rustls-pki-types v1.14.1
+  Downloaded semver v1.0.28
+  Downloaded percent-encoding v2.3.2
+  Downloaded pgrx-pg-config v0.19.2
+  Downloaded pin-utils v0.1.0
+  Downloaded indenter v0.3.4
+  Downloaded idna_adapter v1.2.2
+  Downloaded potential_utf v0.1.5
+  Downloaded rustls-platform-verifier v0.6.2
+  Downloaded serde_derive v1.0.228
+  Downloaded clap_lex v1.1.0
+  Downloaded serde_core v1.0.228
+  Downloaded rustls-webpki v0.103.13
+  Downloaded owo-colors v4.0.0
+  Downloaded heck v0.5.0
+  Downloaded pin-project-lite v0.2.17
+  Downloaded hybrid-array v0.4.12
+  Downloaded jobslot v0.2.24
+  Downloaded pem-rfc7468 v1.0.0
+  Downloaded num-conv v0.2.2
+  Downloaded pkg-config v0.3.33
+  Downloaded serde v1.0.228
+  Downloaded regex v1.12.3
+  Downloaded icu_normalizer_data v2.2.0
+  Downloaded parking_lot_core v0.9.10
+  Downloaded inout v0.2.2
+  Downloaded serde-xml-rs v0.8.2
+  Downloaded once_cell v1.21.4
+  Downloaded utf8parse v0.2.2
+  Downloaded xattr v1.6.1
+  Downloaded serde_json v1.0.150
+  Downloaded pgrx-sql-entity-graph v0.19.2
+  Downloaded bytes v1.11.1
+  Downloaded clap v4.5.60
+  Downloaded const-oid v0.10.2
+  Downloaded getrandom v0.4.2
+  Downloaded icu_collections v2.2.0
+  Downloaded indexmap v2.14.0
+  Downloaded memchr v2.8.1
+  Downloaded miniz_oxide v0.8.9
+  Downloaded mio v0.8.11
+  Downloaded anstyle-query v1.1.5
+  Downloaded colorchoice v1.0.5
+  Downloaded crc32fast v1.5.0
+  Downloaded futures-util v0.3.31
+  Downloaded idna v1.1.0
+  Downloaded quote v1.0.45
+  Downloaded zmij v1.0.21
+  Downloaded anstream v0.6.21
+  Downloaded base64 v0.22.1
+  Downloaded bzip2 v0.6.1
+  Downloaded crates-index v3.14.0
+  Downloaded gimli v0.28.1
+  Downloaded icu_properties_data v2.2.0
+  Downloaded lzma-rust2 v0.16.4
+  Downloaded object v0.32.2
+  Downloaded object v0.39.1
+  Downloaded proc-macro2 v1.0.101
+  Downloaded thiserror v2.0.18
+  Downloaded unescape v0.1.0
+  Downloaded zerofrom v0.1.8
+  Downloaded siphasher v1.0.3
+  Downloaded supports-color v2.1.0
+  Downloaded zstd v0.13.3
+  Downloaded clap-cargo v0.18.3
+  Downloaded ppmd-rust v1.4.0
+  Downloaded byteorder v1.4.3
+  Downloaded openssl v0.10.80
+  Downloaded base64ct v1.5.3
+  Downloaded smol_str v0.3.2
+  Downloaded terminal_size v0.4.4
+  Downloaded thread_local v1.1.7
+  Downloaded tinyvec v1.11.0
+  Downloaded utf8_iter v1.0.4
+  Downloaded zeroize v1.8.2
+  Downloaded rand v0.10.1
+  Downloaded regex-syntax v0.8.10
+  Downloaded zip v8.6.0
+  Downloaded clap_derive v4.5.55
+  Downloaded deflate64 v0.1.12
+  Downloaded time-core v0.1.8
+  Downloaded libc v0.2.186
+  Downloaded stable_deref_trait v1.2.1
+  Downloaded toml_datetime v0.7.5+spec-1.1.0
+  Downloaded tracing-log v0.2.0
+  Downloaded cpubits v0.1.1
+  Downloaded slab v0.4.12
+  Downloaded cfg-if v1.0.4
+  Downloaded color-spantrace v0.3.0
+  Downloaded cfg_aliases v0.2.1
+  Downloaded block-buffer v0.12.0
+  Downloaded cargo-platform v0.3.3
+  Downloaded anstyle v1.0.14
+  Downloaded convert_case v0.11.0
+  Downloaded zstd-safe v7.2.4
+  Downloaded async-trait v0.1.89
+  Downloaded anstyle-parse v0.2.7
+  Downloaded autocfg v1.5.1
+  Downloaded cipher v0.5.2
+  Downloaded cargo_metadata v0.23.1
+  Downloaded ctutils v0.4.2
+  Downloaded tracing-error v0.2.1
+  Downloaded cmov v0.5.4
+  Downloaded camino v1.1.12
+  Downloaded zerofrom-derive v0.1.7
+  Downloaded untrusted v0.9.0
+  Downloaded subtle v2.6.1
+  Downloaded zopfli v0.8.3
+  Downloaded cargo_toml v0.22.3
+  Downloaded chacha20 v0.10.0
+  Downloaded bitflags v2.13.0
+  Downloaded anyhow v1.0.100
+  Downloaded backtrace v0.3.69
+  Downloaded petgraph v0.8.3
+  Downloaded borsh v1.6.1
+  Downloaded writeable v0.6.3
+  Downloaded cc v1.2.63
+  Downloaded zstd-sys v2.0.16+zstd.1.5.7
+  Downloaded bumpalo v3.20.3
+  Downloaded der v0.8.0
+  Downloaded aho-corasick v1.1.4
+  Downloaded zerovec v0.11.6
+  Downloaded utf8-zero v0.8.1
+  Downloaded tinyvec_macros v0.1.1
+  Downloaded clap_builder v4.5.60
+  Downloaded crypto-common v0.2.2
+  Downloaded yoke-derive v0.8.2
+  Downloaded which v8.0.2
+  Downloaded cpufeatures v0.3.0
+  Downloaded color-eyre v0.6.5
+  Downloaded zerovec-derive v0.11.3
+  Downloaded shlex v2.0.1
+  Downloaded toml_writer v1.1.1+spec-1.1.0
+  Downloaded toml_datetime v1.1.1+spec-1.1.0
+  Downloaded constant_time_eq v0.4.2
+  Downloaded thiserror-impl v2.0.18
+  Downloaded smallvec v1.15.1
+  Downloaded strsim v0.11.1
+  Downloaded whoami v2.1.2
+  Downloaded simd-adler32 v0.3.9
+  Downloaded linux-raw-sys v0.12.1
+  Downloaded tinystr v0.8.3
+  Downloaded stringprep v0.1.5
+  Downloaded sha2 v0.11.0
+  Downloaded toml v1.1.2+spec-1.1.0
+  Downloaded socket2 v0.4.10
+  Downloaded toml_parser v1.1.2+spec-1.1.0
+  Downloaded tempfile v3.27.0
+  Downloaded synstructure v0.13.2
+  Downloaded unicode-segmentation v1.12.0
+  Downloaded toml v0.9.12+spec-1.1.0
+  Downloaded yoke v0.8.3
+  Downloaded sharded-slab v0.1.7
+  Downloaded tracing-attributes v0.1.31
+  Downloaded xml v1.3.0
+  Downloaded unicode-bidi v0.3.18
+  Downloaded unicode-properties v0.1.4
+  Downloaded tar v0.4.46
+  Downloaded ureq-proto v0.6.0
+  Downloaded unicode-ident v1.0.22
+  Downloaded socket2 v0.6.4
+  Downloaded tracing-subscriber v0.3.23
+  Downloaded rustls v0.23.40
+  Downloaded uuid v1.23.2
+  Downloaded tracing-core v0.1.36
+  Downloaded zerotrie v0.2.4
+  Downloaded toml_edit v0.25.12+spec-1.1.0
+  Downloaded webpki-root-certs v1.0.1
+  Downloaded url v2.5.8
+  Downloaded tokio-postgres v0.7.18
+  Downloaded typenum v1.20.1
+  Downloaded typed-path v0.12.3
+  Downloaded rustix v1.1.4
+  Downloaded tokio-util v0.7.10
+  Downloaded winnow v0.7.15
+  Downloaded unicode-normalization v0.1.25
+  Downloaded ureq v3.3.0
+  Downloaded vcpkg v0.2.15
+  Downloaded winnow v1.0.3
+  Downloaded time v0.3.47
+  Downloaded zlib-rs v0.6.3
+  Downloaded regex-automata v0.4.14
+  Downloaded webpki-roots v1.0.1
+  Downloaded syn v2.0.117
+  Downloaded tracing v0.1.44
+  Downloaded tokio v1.29.1
+  Downloaded ring v0.17.14
+   Compiling libc v0.2.186
+   Compiling quote v1.0.45
+   Compiling proc-macro2 v1.0.101
+   Compiling unicode-ident v1.0.22
+   Compiling cfg-if v1.0.4
+   Compiling shlex v2.0.1
+   Compiling find-msvc-tools v0.1.9
+   Compiling serde_core v1.0.228
+   Compiling zeroize v1.8.2
+   Compiling memchr v2.8.1
+   Compiling typenum v1.20.1
+   Compiling once_cell v1.21.4
+   Compiling log v0.4.32
+   Compiling stable_deref_trait v1.2.1
+   Compiling pkg-config v0.3.33
+   Compiling smallvec v1.15.1
+   Compiling cmov v0.5.4
+   Compiling const-oid v0.10.2
+   Compiling itoa v1.0.15
+   Compiling rand_core v0.10.1
+   Compiling cpufeatures v0.3.0
+   Compiling getrandom v0.4.2
+   Compiling serde v1.0.228
+   Compiling bitflags v2.13.0
+   Compiling autocfg v1.5.1
+   Compiling pin-project-lite v0.2.17
+   Compiling bytes v1.11.1
+   Compiling zmij v1.0.21
+   Compiling writeable v0.6.3
+   Compiling litemap v0.8.2
+   Compiling serde_json v1.0.150
+   Compiling rustix v1.1.4
+   Compiling icu_normalizer_data v2.2.0
+   Compiling tracing-core v0.1.36
+   Compiling linux-raw-sys v0.12.1
+   Compiling thiserror v2.0.18
+   Compiling utf8_iter v1.0.4
+   Compiling icu_properties_data v2.2.0
+   Compiling ctutils v0.4.2
+   Compiling vcpkg v0.2.15
+   Compiling rustls-pki-types v1.14.1
+   Compiling winnow v1.0.3
+   Compiling tinyvec_macros v0.1.1
+   Compiling regex-syntax v0.8.10
+   Compiling percent-encoding v2.3.2
+   Compiling tinyvec v1.11.0
+   Compiling base64 v0.22.1
+   Compiling toml_writer v1.1.1+spec-1.1.0
+   Compiling crc32fast v1.5.0
+   Compiling tokio v1.29.1
+   Compiling lock_api v0.4.12
+   Compiling chacha20 v0.10.0
+   Compiling unicode-bidi v0.3.18
+   Compiling equivalent v1.0.2
+   Compiling aho-corasick v1.1.4
+   Compiling is_ci v1.2.0
+   Compiling futures-sink v0.3.32
+   Compiling hashbrown v0.17.1
+   Compiling futures-core v0.3.32
+   Compiling parking_lot_core v0.9.10
+   Compiling unicode-properties v0.1.4
+   Compiling simd-adler32 v0.3.9
+   Compiling utf8parse v0.2.2
+   Compiling scopeguard v1.2.0
+   Compiling untrusted v0.9.0
+   Compiling syn v2.0.117
+   Compiling eyre v0.6.8
+   Compiling hybrid-array v0.4.12
+   Compiling unicode-normalization v0.1.25
+   Compiling lazy_static v1.5.0
+   Compiling anstyle-parse v0.2.7
+   Compiling tracing-log v0.2.0
+   Compiling sharded-slab v0.1.7
+   Compiling thread_local v1.1.7
+   Compiling zstd-safe v7.2.4
+   Compiling is-terminal v0.4.17
+   Compiling getrandom v0.2.17
+   Compiling is_terminal_polyfill v1.48.2
+   Compiling supports-color v2.1.0
+   Compiling socket2 v0.4.10
+   Compiling jobserver v0.1.34
+   Compiling mio v0.8.11
+   Compiling anstyle-query v1.1.5
+   Compiling rand v0.10.1
+   Compiling openssl-probe v0.2.1
+   Compiling anstyle v1.0.14
+   Compiling fallible-iterator v0.2.0
+   Compiling httparse v1.10.1
+   Compiling rustls v0.23.40
+   Compiling anyhow v1.0.100
+   Compiling camino v1.1.12
+   Compiling cc v1.2.63
+   Compiling crypto-common v0.2.2
+   Compiling block-buffer v0.12.0
+   Compiling stringprep v0.1.5
+   Compiling indenter v0.3.4
+   Compiling nu-ansi-term v0.50.3
+   Compiling foreign-types-shared v0.1.1
+   Compiling byteorder v1.4.3
+   Compiling adler2 v2.0.1
+   Compiling indexmap v2.14.0
+   Compiling colorchoice v1.0.5
+   Compiling toml_parser v1.1.2+spec-1.1.0
+   Compiling siphasher v1.0.3
+   Compiling openssl v0.10.80
+   Compiling anstream v0.6.21
+   Compiling miniz_oxide v0.8.9
+   Compiling foreign-types v0.3.2
+   Compiling phf_shared v0.13.1
+   Compiling inout v0.2.2
+   Compiling owo-colors v4.0.0
+   Compiling uuid v1.23.2
+   Compiling regex-automata v0.4.14
+   Compiling digest v0.11.3
+   Compiling http v1.4.1
+   Compiling form_urlencoded v1.2.2
+   Compiling clap_lex v1.1.0
+   Compiling gimli v0.28.1
+   Compiling hmac v0.13.0
+   Compiling sha2 v0.11.0
+   Compiling md-5 v0.11.0
+   Compiling adler v1.0.2
+   Compiling native-tls v0.2.18
+   Compiling futures-task v0.3.31
+   Compiling serde_spanned v1.1.1
+   Compiling toml_datetime v1.1.1+spec-1.1.0
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling semver v1.0.28
+   Compiling foldhash v0.1.4
+   Compiling powerfmt v0.2.0
+   Compiling winnow v0.7.15
+   Compiling strsim v0.11.1
+   Compiling subtle v2.6.1
+   Compiling pin-utils v0.1.0
+   Compiling color-spantrace v0.3.0
+   Compiling base64ct v1.5.3
+   Compiling zlib-rs v0.6.3
+   Compiling heck v0.5.0
+   Compiling pem-rfc7468 v1.0.0
+   Compiling toml v1.1.2+spec-1.1.0
+   Compiling futures-util v0.3.31
+   Compiling deranged v0.5.8
+   Compiling hashbrown v0.15.5
+   Compiling miniz_oxide v0.7.4
+   Compiling ring v0.17.14
+   Compiling openssl-sys v0.9.116
+   Compiling zstd-sys v2.0.16+zstd.1.5.7
+   Compiling postgres-protocol v0.6.12
+   Compiling terminal_size v0.4.4
+   Compiling backtrace v0.3.69
+   Compiling clap_builder v4.5.60
+   Compiling cargo-platform v0.3.3
+   Compiling parking_lot v0.12.3
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling postgres-types v0.2.14
+   Compiling phf v0.13.1
+   Compiling cipher v0.5.2
+   Compiling rustls-native-certs v0.8.4
+   Compiling socket2 v0.6.4
+   Compiling addr2line v0.21.0
+   Compiling whoami v2.1.2
+   Compiling futures-channel v0.3.31
+   Compiling object v0.32.2
+   Compiling fixedbitset v0.5.7
+   Compiling num-conv v0.2.2
+   Compiling object v0.39.1
+   Compiling cpubits v0.1.1
+   Compiling synstructure v0.13.2
+   Compiling bumpalo v3.20.3
+   Compiling unicode-segmentation v1.12.0
+   Compiling flate2 v1.1.9
+   Compiling rustc-demangle v0.1.27
+   Compiling libbz2-rs-sys v0.2.5
+   Compiling matchers v0.2.0
+   Compiling time-core v0.1.8
+   Compiling zopfli v0.8.3
+   Compiling time v0.3.47
+   Compiling convert_case v0.11.0
+   Compiling aes v0.9.1
+   Compiling petgraph v0.8.3
+   Compiling ureq-proto v0.6.0
+   Compiling pathsearch v0.2.0
+   Compiling lzma-rust2 v0.16.4
+   Compiling xattr v1.6.1
+   Compiling bzip2 v0.6.1
+   Compiling der v0.8.0
+   Compiling pbkdf2 v0.13.0
+   Compiling sha1 v0.11.0
+   Compiling filetime v0.2.27
+   Compiling webpki-root-certs v1.0.1
+   Compiling webpki-roots v1.0.1
+   Compiling rustc-stable-hash v0.1.2
+   Compiling typed-path v0.12.3
+   Compiling ppmd-rust v1.4.0
+   Compiling home v0.5.5
+   Compiling zerofrom-derive v0.1.7
+   Compiling yoke-derive v0.8.2
+   Compiling zerovec-derive v0.11.3
+   Compiling displaydoc v0.2.6
+   Compiling serde_derive v1.0.228
+   Compiling tracing-attributes v0.1.31
+   Compiling thiserror-impl v2.0.18
+   Compiling openssl-macros v0.1.1
+   Compiling clap_derive v4.5.55
+   Compiling async-trait v0.1.89
+   Compiling derive_destructure2 v0.1.3
+   Compiling rustc-hash v2.1.1
+   Compiling zerofrom v0.1.8
+   Compiling cargo-pgrx v0.19.2
+   Compiling fastrand v2.3.0
+   Compiling yoke v0.8.3
+   Compiling zerovec v0.11.6
+   Compiling zerotrie v0.2.4
+   Compiling deflate64 v0.1.12
+   Compiling xml v1.3.0
+   Compiling tracing v0.1.44
+   Compiling constant_time_eq v0.4.2
+   Compiling unescape v0.1.0
+   Compiling tracing-subscriber v0.3.23
+   Compiling tokio-util v0.7.10
+   Compiling utf8-zero v0.8.1
+   Compiling jobslot v0.2.24
+   Compiling tinystr v0.8.3
+   Compiling potential_utf v0.1.5
+   Compiling tempfile v3.27.0
+   Compiling icu_collections v2.2.0
+   Compiling tar v0.4.46
+   Compiling icu_locale_core v2.2.0
+   Compiling regex v1.12.3
+   Compiling clap v4.5.60
+   Compiling toml_edit v0.25.12+spec-1.1.0
+   Compiling tokio-postgres v0.7.18
+   Compiling which v8.0.2
+   Compiling icu_provider v2.2.0
+   Compiling tracing-error v0.2.1
+   Compiling icu_normalizer v2.2.0
+   Compiling icu_properties v2.2.0
+   Compiling color-eyre v0.6.5
+   Compiling pgrx-sql-entity-graph v0.19.2
+   Compiling smol_str v0.3.2
+   Compiling cargo_metadata v0.23.1
+   Compiling hex v0.4.3
+   Compiling cargo_toml v0.22.3
+   Compiling crates-index v3.14.0
+   Compiling serde-xml-rs v0.8.2
+   Compiling postgres v0.19.14
+   Compiling idna_adapter v1.2.2
+   Compiling idna v1.1.0
+   Compiling url v2.5.8
+   Compiling clap-cargo v0.18.3
+   Compiling env_proxy v0.4.1
+   Compiling pgrx-pg-config v0.19.2
+   Compiling rustls-webpki v0.103.13
+   Compiling rustls-platform-verifier v0.6.2
+   Compiling ureq v3.3.0
+   Compiling zstd v0.13.3
+   Compiling zip v8.6.0
+    Finished `release` profile [optimized] target(s) in 41.25s
+  Installing /dev/shm/kitrun/cargohome-18/bin/cargo-pgrx
+   Installed package `cargo-pgrx v0.19.2` (executable `cargo-pgrx`)
++ export PG_CONFIG=/dev/shm/kitrun/pg18/bin/pg_config
++ PG_CONFIG=/dev/shm/kitrun/pg18/bin/pg_config
++ cargo pgrx init --pg18 /dev/shm/kitrun/pg18/bin/pg_config
+   Validating /dev/shm/kitrun/pg18/bin/pg_config
+ Initializing data directory at /dev/shm/kitrun/pgrxhome-18/data-18
++ cargo pgrx install --release --pg-config /dev/shm/kitrun/pg18/bin/pg_config
+       Using PgConfig("pg18") and `pg_config` from /dev/shm/kitrun/pg18/bin/pg_config
+    Building extension with features pg18
+     Running command "~/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo" "rustc" "--lib" "--manifest-path" "/dev/shm/kitrun/gate18/pg_agent_gate/Cargo.toml" "--release" "--features" "pg18" "--no-default-features" "--message-format=json-render-diagnostics" "--" "-C" "link-arg=-Wl,--no-gc-sections"
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.24
+   Compiling stable_deref_trait v1.2.1
+   Compiling libc v0.2.189
+   Compiling serde_core v1.0.229
+   Compiling autocfg v1.5.1
+   Compiling writeable v0.6.4
+   Compiling thiserror v2.0.20
+   Compiling memchr v2.8.3
+   Compiling litemap v0.8.3
+   Compiling serde v1.0.229
+   Compiling utf8_iter v1.0.4
+   Compiling icu_normalizer_data v2.3.0
+   Compiling icu_properties_data v2.3.0
+   Compiling zmij v1.0.23
+   Compiling smallvec v1.16.1
+   Compiling winnow v1.0.4
+   Compiling serde_json v1.0.151
+   Compiling glob v0.3.4
+   Compiling shlex v2.0.1
+   Compiling toml_writer v1.1.2+spec-1.1.0
+   Compiling indenter v0.3.4
+   Compiling find-msvc-tools v0.1.12
+   Compiling anyhow v1.0.104
+   Compiling once_cell v1.21.4
+   Compiling is_ci v1.2.0
+   Compiling percent-encoding v2.3.2
+   Compiling cc v1.4.6
+   Compiling regex-syntax v0.8.11
+   Compiling cfg-if v1.0.4
+   Compiling winnow v0.7.15
+   Compiling minimal-lexical v0.2.1
+   Compiling supports-color v3.0.2
+   Compiling either v1.18.0
+   Compiling libloading v0.8.9
+   Compiling itoa v1.0.18
+   Compiling bindgen v0.72.1
+   Compiling bitflags v2.13.2
+   Compiling form_urlencoded v1.2.2
+   Compiling same-file v1.0.6
+   Compiling eyre v0.6.14
+   Compiling owo-colors v4.4.0
+   Compiling hashbrown v0.17.1
+   Compiling itertools v0.13.0
+   Compiling equivalent v1.0.2
+   Compiling rustc-hash v2.1.3
+   Compiling foldhash v0.1.5
+   Compiling shlex v1.3.0
+   Compiling walkdir v2.5.0
+   Compiling clang-sys v1.9.1
+   Compiling toml_parser v1.1.3+spec-1.1.0
+   Compiling unicode-segmentation v1.13.3
+   Compiling fixedbitset v0.5.7
+   Compiling aho-corasick v1.1.5
+   Compiling nom v7.1.3
+   Compiling hashbrown v0.15.5
+   Compiling indexmap v2.14.2
+   Compiling convert_case v0.11.0
+   Compiling syn v3.0.5
+   Compiling syn v2.0.119
+   Compiling radium v0.7.0
+   Compiling unescape v0.1.0
+   Compiling getrandom v0.4.3
+   Compiling tap v1.0.1
+   Compiling pathsearch v0.2.0
+   Compiling petgraph v0.8.3
+   Compiling wyz v0.5.1
+   Compiling funty v2.0.0
+   Compiling cexpr v0.6.0
+   Compiling half v1.8.3
+   Compiling uuid v1.26.1
+   Compiling seahash v4.1.0
+   Compiling bitvec v1.1.1
+   Compiling cee-scape v0.2.0
+   Compiling regex-automata v0.4.18
+   Compiling serde_spanned v1.1.1
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling toml_datetime v1.1.1+spec-1.1.0
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling toml v1.1.6+spec-1.1.0
+   Compiling regex v1.13.1
+   Compiling zerovec-derive v0.11.6
+   Compiling displaydoc v0.2.7
+   Compiling thiserror-impl v2.0.20
+   Compiling serde_derive v1.0.229
+   Compiling synstructure v0.13.2
+   Compiling pgrx-sql-entity-graph v0.19.2
+   Compiling zerofrom-derive v0.1.7
+   Compiling yoke-derive v0.8.2
+   Compiling enum-map-derive v0.17.0
+   Compiling enum-map v2.7.3
+   Compiling zerofrom v0.1.8
+   Compiling yoke v0.8.3
+   Compiling cargo_toml v0.22.3
+   Compiling zerovec v0.11.8
+   Compiling zerotrie v0.2.5
+   Compiling serde_cbor v0.11.2
+   Compiling tinystr v0.8.4
+   Compiling potential_utf v0.1.6
+   Compiling icu_collections v2.3.0
+   Compiling icu_locale_core v2.3.0
+   Compiling icu_provider v2.3.1
+   Compiling icu_normalizer v2.3.0
+   Compiling icu_properties v2.3.0
+   Compiling pgrx-macros v0.19.2
+   Compiling idna_adapter v1.2.2
+   Compiling idna v1.1.0
+   Compiling url v2.5.8
+   Compiling pgrx-pg-config v0.19.2
+   Compiling pgrx-bindgen v0.19.2
+   Compiling pgrx-pg-sys v0.19.2
+   Compiling pgrx v0.19.2
+   Compiling pg_agent_gate v0.4.3 (/dev/shm/kitrun/gate18/pg_agent_gate)
+    Finished `release` profile [optimized] target(s) in 39.32s
+  Installing extension
+     Copying control file to /dev/shm/kitrun/pg18/share/postgresql/extension/pg_agent_gate.control
+     Copying shared library to /dev/shm/kitrun/pg18/lib/postgresql/pg_agent_gate.so
+  Discovered 11 SQL entities: 0 schemas (0 unique), 9 functions, 0 types, 0 enums, 2 sqls, 0 ords, 0 hashes, 0 aggregates, 0 triggers
+     Writing SQL entities to /dev/shm/kitrun/pg18/share/postgresql/extension/pg_agent_gate--0.4.3.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg18/share/postgresql/extension/pg_agent_gate--0.4.2--0.4.3.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg18/share/postgresql/extension/pg_agent_gate--0.4.1--0.4.3.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg18/share/postgresql/extension/pg_agent_gate--0.4.0--0.4.1.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg18/share/postgresql/extension/pg_agent_gate--0.3.0--0.4.0.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg18/share/postgresql/extension/pg_agent_gate--0.2.9--0.2.10.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg18/share/postgresql/extension/pg_agent_gate--0.2.8--0.2.9.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg18/share/postgresql/extension/pg_agent_gate--0.2.7--0.2.8.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg18/share/postgresql/extension/pg_agent_gate--0.2.6--0.2.7.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg18/share/postgresql/extension/pg_agent_gate--0.2.5--0.2.6.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg18/share/postgresql/extension/pg_agent_gate--0.2.4--0.2.5.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg18/share/postgresql/extension/pg_agent_gate--0.2.3--0.2.4.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg18/share/postgresql/extension/pg_agent_gate--0.2.2--0.2.3.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg18/share/postgresql/extension/pg_agent_gate--0.2.15--0.3.0.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg18/share/postgresql/extension/pg_agent_gate--0.2.14--0.2.15.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg18/share/postgresql/extension/pg_agent_gate--0.2.13--0.2.14.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg18/share/postgresql/extension/pg_agent_gate--0.2.12--0.2.13.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg18/share/postgresql/extension/pg_agent_gate--0.2.11--0.2.12.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg18/share/postgresql/extension/pg_agent_gate--0.2.10--0.2.11.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg18/share/postgresql/extension/pg_agent_gate--0.2.1--0.2.2.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg18/share/postgresql/extension/pg_agent_gate--0.2.0--0.2.1.sql
+     Copying extension schema upgrade file to /dev/shm/kitrun/pg18/share/postgresql/extension/pg_agent_gate--0.1.0--0.2.0.sql
+    Finished installing pg_agent_gate
+++ /dev/shm/kitrun/pg18/bin/pg_config --bindir
++ export PATH=/dev/shm/kitrun/pg18/bin:/dev/shm/kitrun/cargohome-18/bin:~/.cargo/bin:~/.local/bin:~/pg19/bin:~/.bun/bin:/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/var/lib/snapd/snap/bin
++ PATH=/dev/shm/kitrun/pg18/bin:/dev/shm/kitrun/cargohome-18/bin:~/.cargo/bin:~/.local/bin:~/pg19/bin:~/.bun/bin:/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/var/lib/snapd/snap/bin
++ export DATA=/tmp/gate-trial PGPORT=5571 PGHOST=/tmp/gate-trial
++ DATA=/tmp/gate-trial
++ PGPORT=5571
++ PGHOST=/tmp/gate-trial
++ initdb -D /tmp/gate-trial --auth=trust -E UTF8 -U postgres
+The files belonging to this database system will be owned by user "manu".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.UTF-8".
+The default text search configuration will be set to "english".
+
+Data page checksums are enabled.
+
+creating directory /tmp/gate-trial ... ok
+creating subdirectories ... ok
+selecting dynamic shared memory implementation ... posix
+selecting default "max_connections" ... 100
+selecting default "shared_buffers" ... 128MB
+selecting default time zone ... America/Santiago
+creating configuration files ... ok
+running bootstrap script ... ok
+performing post-bootstrap initialization ... ok
+syncing data to disk ... ok
+
+Success. You can now start the database server using:
+
+    pg_ctl -D /tmp/gate-trial -l logfile start
+
++ echo 'shared_preload_libraries = '\''pg_agent_gate'\'''
++ pg_ctl -D /tmp/gate-trial -l /tmp/gate-trial/server.log -w -o '-p 5571 -k /tmp/gate-trial -c listen_addresses='\'''\''' start
+waiting for server to start.... done
+server started
++ psql -X -At -U postgres -d postgres -v ON_ERROR_STOP=1
+CREATE EXTENSION
+CREATE TABLE
+INSERT 0 3
+CREATE ROLE
+GRANT
+GRANT
+{"role": "billing_agent", "agent": "billing", "max_rows": 1, "allow_ddl": false, "enforced_by": "shared_preload_libraries", "takes_effect": "on the next connection of that role; existing connections are not behind the gate", "window_seconds": 3600, "requires_approval": false, "max_rows_per_window": 1}
++ psql -X -At -U billing_agent -d postgres
+{"role": "billing_agent", "agent": "billing", "verbs": ["discover", "propose", "dry_run", "commit", "propose_and_commit", "acts", "whoami"], "version": "0.4.3", "enforced": true, "is_agent": true, "attempt_durability": "fast", "loaded_at_server_start": true}
+ERROR:  pg_agent_gate: this session belongs to agent "billing": it proposes, it does not execute
+DETAIL:  DELETE does not reach the database from an agent session
+HINT:  Call agent_gate.propose(sql, intent), then agent_gate.dry_run(proposal) or agent_gate.commit(proposal) -- or agent_gate.propose_and_commit(sql, intent) for both in one call. agent_gate.discover() shows what this agent may touch.
+{"ok": true, "kind": "write", "next": "agent_gate.dry_run(proposal) shows the exact effect; agent_gate.commit(proposal) makes it real", "checks": [{"check": "parses", "detail": "PostgreSQL's parser accepts it", "passed": true}, {"check": "single_statement", "detail": "exactly one statement", "passed": true}, {"check": "kind_allowed", "detail": "write statement (T_UpdateStmt)", "passed": true}, {"check": "no_writing_cte", "detail": "no CTE changes data: max_rows sees every row it touches", "passed": true}, {"check": "keeps_its_context", "detail": "nothing in the statement calls set_config()", "passed": true}, {"check": "no_amplification", "detail": "no unsafe cascade, trigger or rule on this write's target (or an inheritance child of it) can amplify it beyond the agent's reach", "passed": true}, {"check": "no_hidden_sql", "detail": "no function that runs SQL from a text is called", "passed": true}, {"check": "no_opaque_function", "detail": "every function called is a vetted built-in, or a user function that is neither volatile nor SECURITY DEFINER, is not this agent's to alter, and sets no parameter an agent may not set", "passed": true}, {"check": "changes_only_rows", "detail": "no built-in that changes state outside rows (session locks, large objects, setval, the WAL) is called", "passed": true}, {"check": "resolves", "detail": "the planner resolved every table, column, type and function without executing the statement; it was planned only after every check above passed", "passed": true}], "proposal": 1, "estimated_rows": 1.0, "expires_in_seconds": 900}
+{"kind": "write", "mode": "dry_run", "note": "nothing was kept; effects outside transactions (sequence values, session advisory locks) are not undone", "rows": [{"after": {"id": 1, "name": "Ana", "plan": "pro"}, "before": {"id": 1, "name": "Ana", "plan": "free"}}], "error": null, "reason": null, "outcome": "rolled_back", "proposal": 1, "execution": 1, "truncated": false, "assertions": [], "duration_ms": 10.316058, "rows_affected": 1, "rows_returned": 1}
+{"kind": "write", "mode": "commit", "note": "", "rows": [{"after": {"id": 1, "name": "Ana", "plan": "pro"}, "before": {"id": 1, "name": "Ana", "plan": "free"}}], "error": null, "reason": null, "outcome": "kept", "proposal": 1, "execution": 2, "truncated": false, "assertions": [], "duration_ms": 4.779487, "rows_affected": 1, "rows_returned": 1}
+{"commit": {"kind": "write", "mode": "commit", "note": "", "rows": [{"after": {"id": 2, "name": "Bo", "plan": "free"}, "before": {"id": 2, "name": "Bo", "plan": "free"}}, {"after": {"id": 3, "name": "Cy", "plan": "free"}, "before": {"id": 3, "name": "Cy", "plan": "free"}}, {"after": {"id": 1, "name": "Ana", "plan": "free"}, "before": {"id": 1, "name": "Ana", "plan": "pro"}}], "error": null, "reason": "it touched 3 rows, more than this agent may change in one statement", "outcome": "aborted", "proposal": 2, "execution": 3, "truncated": false, "assertions": [], "duration_ms": 2.904547, "rows_affected": 3, "rows_returned": 3}, "outcome": "aborted", "proposal": {"ok": true, "kind": "write", "next": "committed in this same call: see commit", "checks": [{"check": "parses", "detail": "PostgreSQL's parser accepts it", "passed": true}, {"check": "single_statement", "detail": "exactly one statement", "passed": true}, {"check": "kind_allowed", "detail": "write statement (T_UpdateStmt)", "passed": true}, {"check": "no_writing_cte", "detail": "no CTE changes data: max_rows sees every row it touches", "passed": true}, {"check": "keeps_its_context", "detail": "nothing in the statement calls set_config()", "passed": true}, {"check": "no_amplification", "detail": "no unsafe cascade, trigger or rule on this write's target (or an inheritance child of it) can amplify it beyond the agent's reach", "passed": true}, {"check": "no_hidden_sql", "detail": "no function that runs SQL from a text is called", "passed": true}, {"check": "no_opaque_function", "detail": "every function called is a vetted built-in, or a user function that is neither volatile nor SECURITY DEFINER, is not this agent's to alter, and sets no parameter an agent may not set", "passed": true}, {"check": "changes_only_rows", "detail": "no built-in that changes state outside rows (session locks, large objects, setval, the WAL) is called", "passed": true}, {"check": "resolves", "detail": "the planner resolved every table, column, type and function without executing the statement; it was planned only after every check above passed", "passed": true}], "proposal": 2, "estimated_rows": 850.0, "expires_in_seconds": 900}}
+{"ok": false, "kind": "ddl", "next": "fix what failed and propose again", "checks": [{"check": "parses", "detail": "PostgreSQL's parser accepts it", "passed": true}, {"check": "single_statement", "detail": "exactly one statement", "passed": true}, {"check": "kind_allowed", "detail": "T_DropStmt changes the schema or the server, and this agent is not allowed DDL", "passed": false}], "proposal": 3, "estimated_rows": null, "expires_in_seconds": 900}
+[{"ok": false, "sql": "drop table customers", "kind": "ddl", "intent": "clean up", "proposal": 3, "executions": [], "proposed_at": "2026-11-13T21:49:42.673049-03:00"}, {"ok": true, "sql": "update customers set plan = 'free'", "kind": "write", "intent": "reset every plan", "proposal": 2, "executions": [{"at": "2026-11-13T21:49:42.669003-03:00", "mode": "commit", "reason": "it touched 3 rows, more than this agent may change in one statement", "outcome": "aborted", "rows_affected": 3}], "proposed_at": "2026-11-13T21:49:42.668787-03:00"}, {"ok": true, "sql": "update customers set plan = 'pro' where id = $1::int", "kind": "write", "intent": "upgrade the customer who asked", "proposal": 1, "executions": [{"at": "2026-11-13T21:49:42.650382-03:00", "mode": "dry_run", "outcome": "rolled_back", "rows_affected": 1}, {"at": "2026-11-13T21:49:42.661849-03:00", "mode": "commit", "outcome": "kept", "rows_affected": 1}], "proposed_at": "2026-11-13T21:49:42.648561-03:00"}]
++ psql -X -U postgres -d postgres -c 'TABLE customers ORDER BY id'
+ id | name | plan 
+----+------+------
+  1 | Ana  | pro
+  2 | Bo   | free
+  3 | Cy   | free
+(3 rows)
+
++ pg_ctl -D /tmp/gate-trial -m fast -w stop
+waiting for server to shut down.... done
+server stopped
++ rm -rf /tmp/gate-trial
+rc=0
