@@ -19,12 +19,12 @@ JSON between the model and its data, and with the model in the same process, no 
 
 | piece | what it checks | version | PostgreSQL | needs |
 |---|---|---|---|---|
-| [pg_agent_gate][gate] | an agent's SQL, before it runs | 0.4.3 | 18, 19 | (living >= 0.5.6) |
-| [pg_living_assertions][living] | any stated fact, with its date | 0.5.10 | 11-19 | nothing |
-| [pg_promise_guard][promise] | schema guarantees no longer enforced | 0.2.10 | 11-19 | living |
-| [pg_grammar_guard][grammar] | identifiers an LLM may emit | 0.4.9 | 11-19 | living |
-| [pg_plan_guard][plan] | drift from an approved plan | 1.1.11 | 19 | pg_plan_advice (contrib) |
-| [pg_recall_guard][recall] | vector-index recall drift | 0.2.10 | 10-19 | tsm_system_rows |
+| [pg_agent_gate][gate] | an agent's SQL, before it runs | 0.4.4 | 18, 19 | (living >= 0.5.6) |
+| [pg_living_assertions][living] | any stated fact, with its date | 0.5.11 | 11-19 | nothing |
+| [pg_promise_guard][promise] | schema guarantees no longer enforced | 0.2.11 | 11-19 | (living, for watch()) |
+| [pg_grammar_guard][grammar] | identifiers an LLM may emit | 0.4.10 | 11-19 | living |
+| [pg_plan_guard][plan] | drift from an approved plan | 1.1.12 | 19 | pg_plan_advice (contrib) |
+| [pg_recall_guard][recall] | vector-index recall drift | 0.2.11 | 10-19 | nothing |
 | [pg_phasevec][phasevec] | **preview, 0.x**: readings with provenance | 0.20.0 | 18, 19 | nothing |
 | [ygg-agent][agent] | not an extension: the model's loop, no MCP | 0.2.0 | any | gate >= 0.4.0 |
 
@@ -117,18 +117,18 @@ preview:** its claim-authorship rules are still changing, and it is offered for 
 ## How they depend on each other
 
 ```
-pg_living_assertions  <-- requires --  pg_promise_guard
-                      <-- requires --  pg_grammar_guard
+pg_living_assertions  <-- requires --  pg_grammar_guard
+                      <-- optional --  pg_promise_guard  (watch() only, since 0.2.10)
                       <-- optional --  pg_plan_guard   (watch() only; needs pg_plan_advice, PG 19)
                       <-- optional --  pg_agent_gate   (bound assertions; use 0.5.6 or later)
-pg_recall_guard       (tsm_system_rows; a vector index to watch)
+pg_recall_guard       (a vector index to watch; nothing else since 0.2.10)
 pg_phasevec           (stands alone)
 ygg-agent             (Python, outside the database) -- talks SQL to --> pg_agent_gate >= 0.4.0
 ```
 
 `make install` of a guard does not install pg_living_assertions: install it first, then
 `CREATE EXTENSION <guard> CASCADE`. With pg_living_assertions 0.5.5 the gate refuses writes
-that have bound assertions (a `search_path` leak fixed in 0.5.6); 0.5.10 is current.
+that have bound assertions (a `search_path` leak fixed in 0.5.6); 0.5.11 is current.
 
 ## Reporting bugs
 
@@ -175,12 +175,12 @@ checks (preflight) — reproduce it with one command:
 
 ```sh
 preflight check container \
-  ghcr.io/latamflows/ygg-pg@sha256:ec1aabe4be95f2f84d9c06aa612edc6346079dc7ebfe93280332cd7905c0a9f1
+  ghcr.io/latamflows/ygg-pg@sha256:46c4a8e1e0d9cda4e65a4f3fc616948b118508e28db1d34f085a4f4c2074293f
 ```
 
-(preflight 1.22.0, no credentials needed). That image is ygg-pg 0.3.6: PostgreSQL 19rc2 with
-pg_agent_gate 0.4.3, pg_living_assertions 0.5.10, pg_promise_guard 0.2.10, pg_plan_guard
-1.1.11, pg_grammar_guard 0.4.9 and pg_phasevec 0.20.0 (preview, installed but not created); it
+(preflight 1.22.0, no credentials needed). That image is ygg-pg 0.3.7: PostgreSQL 19.0 with
+pg_agent_gate 0.4.4, pg_living_assertions 0.5.11, pg_promise_guard 0.2.11, pg_plan_guard
+1.1.12, pg_grammar_guard 0.4.10 and pg_phasevec 0.20.0 (preview, installed but not created); it
 does not include pg_recall_guard. LatamFlows is a Red Hat partner; container certification is
 the next step.
 

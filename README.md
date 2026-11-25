@@ -15,26 +15,26 @@ recomputes it from the raw data.
 
 | piece | role | version | PostgreSQL | in this kit |
 |---|---|---|---|---|
-| pg_agent_gate | flagship | 0.4.3 | 18, 19 | quickstart, promises, attacks |
+| pg_agent_gate | flagship | 0.4.4 | 18, 19 | quickstart, promises, attacks |
 | ygg-agent | the model's loop, no MCP (Python) | 0.2.0 | any with the gate >= 0.4.0 | notes below |
 | pg_phasevec | **preview, 0.x** | 0.20.0 | 18, 19 | quickstart, promises, attacks |
-| pg_living_assertions | foundation | 0.5.10 | 11-19 | install notes below |
-| pg_promise_guard | guard | 0.2.10 | 11-19 | install notes below |
-| pg_grammar_guard | guard | 0.4.9 | 11-19 | install notes below |
-| pg_plan_guard | guard | 1.1.11 | 19 only | install notes below |
-| pg_recall_guard | guard | 0.2.10 | 10-19 (CI matrix) | install notes below |
+| pg_living_assertions | foundation | 0.5.11 | 11-19 | install notes below |
+| pg_promise_guard | guard | 0.2.11 | 11-19 | install notes below |
+| pg_grammar_guard | guard | 0.4.10 | 11-19 | install notes below |
+| pg_plan_guard | guard | 1.1.12 | 19 only | install notes below |
+| pg_recall_guard | guard | 0.2.11 | 10-19 (CI matrix) | install notes below |
 
 pg_phasevec is a **0.x preview**: its interface and its authorship rules can still change
 before 1.0, and its README lists the open findings under "Known limits". It is public (GitHub
 tag `v0.20.0`, PGXN as `testing`). Try it and attack it; do not put data you cannot rebuild
 behind it yet.
 
-Without building anything: the public image `ghcr.io/latamflows/ygg-pg:0.3.6` (PostgreSQL
-19rc2 on Red Hat UBI 9) ships pg_agent_gate, pg_living_assertions, pg_promise_guard,
+Without building anything: the public image `ghcr.io/latamflows/ygg-pg:0.3.7` (PostgreSQL
+19.0 on Red Hat UBI 9) ships pg_agent_gate, pg_living_assertions, pg_promise_guard,
 pg_plan_guard, pg_grammar_guard and pg_phasevec (installed, not created). The quickstarts
 below build from source, which is how they were tested.
 
-## pg_agent_gate 0.4.3 (the flagship)
+## pg_agent_gate 0.4.4 (the flagship)
 
 Rust, pgrx 0.19.2; PostgreSQL 18 and 19. In a session that belongs to an AI agent, SQL does
 not execute. The agent may only *propose* one statement through seven verbs (`discover`,
@@ -46,7 +46,7 @@ allowed). Everything the agent proposed, and why anything was refused, is record
 append-only. It is enforced by hooks inside the server, so there is no client, driver or
 protocol path around it. The adversary it is built against is the agent.
 
-Bound assertions come from pg_living_assertions: use **0.5.6 or later** (0.5.10 is current).
+Bound assertions come from pg_living_assertions: use **0.5.6 or later** (0.5.11 is current).
 With 0.5.5 the gate detects a `search_path` leak and refuses writes that have bound
 assertions (gate README; META.json recommends 0.5.6).
 
@@ -69,26 +69,26 @@ All pure SQL, Apache-2.0, each with its own repository, CI and `SECURITY.md`. Th
 separate quickstart for them in this kit: follow each repository's README, with the notes
 below (what the 2026-11-11 review found when it ran those READMEs literally).
 
-* **pg_living_assertions 0.5.10** (PostgreSQL 11-19). A claim, the SQL that proves it, and the
+* **pg_living_assertions 0.5.11** (PostgreSQL 11-19). A claim, the SQL that proves it, and the
   date it was last proved. `run()` evaluates the SQL read-only, in a subtransaction that is
   always rolled back, as the role that declared it. Note: `make installcheck` after
   `make cluster` needs `PGHOST=$PWD/.testcluster`; `make cluster` and `check-suites` need
   PostgreSQL 18 or later.
-* **pg_promise_guard 0.2.10** (11-19). Guarantees the schema advertises but no longer enforces
+* **pg_promise_guard 0.2.11** (11-19). Guarantees the schema advertises but no longer enforces
   (invalid UNIQUE indexes, NOT VALID constraints, disabled triggers, RLS not forced...).
-  Requires pg_living_assertions: `CREATE EXTENSION pg_promise_guard CASCADE`. Its objects live
+  pg_living_assertions is optional since 0.2.10 (only `watch()` needs it). Its objects live
   in schema `promise_guard`: write `promise_guard.promise_breaks`, `promise_guard.promises_kept()`.
-* **pg_grammar_guard 0.4.9** (11-19). A GBNF / JSON-Schema grammar built from the live
+* **pg_grammar_guard 0.4.10** (11-19). A GBNF / JSON-Schema grammar built from the live
   catalog, so a constrained LLM cannot emit an identifier that does not exist; drift is
   watched through pg_living_assertions. Requires it: `CREATE EXTENSION pg_grammar_guard
   CASCADE` (`make install` does not install pg_living_assertions).
-* **pg_plan_guard 1.1.11** (PostgreSQL 19 only). Records the plan advice you approved
-  (PostgreSQL 19's `pg_plan_advice`) and reports when the planner's choice drifts. On 18 the
-  `CREATE EXTENSION` succeeds but the first capture fails. pg_living_assertions is optional
+* **pg_plan_guard 1.1.12** (PostgreSQL 19 only). Records the plan advice you approved
+  (PostgreSQL 19's `pg_plan_advice`) and reports when the planner's choice drifts. On 18 and
+  older `CREATE EXTENSION` refuses with "requires PostgreSQL 19 or later" (since 1.1.11). pg_living_assertions is optional
   (only `watch()` needs it).
-* **pg_recall_guard 0.2.10** (CI matrix 10-19). Measures a vector index's recall against exact
-  ground truth and reports drift from the baseline you approved. Requires `tsm_system_rows`
-  (contrib); you need a vector index (pgvector, pgvectorscale, gist or spgist) to watch.
+* **pg_recall_guard 0.2.11** (CI matrix 10-19). Measures a vector index's recall against exact
+  ground truth and reports drift from the baseline you approved. It requires no other
+  extension since 0.2.10 (`tsm_system_rows` no longer); you need a vector index (pgvector, pgvectorscale, gist or spgist) to watch.
 
 ## pg_phasevec 0.20.0 (preview, 0.x)
 
@@ -122,14 +122,16 @@ repository's `fuzz/` directory.
 
 ## Versions this kit was written against
 
-* pg_agent_gate 0.4.3: commit `2e4da3b` (GitHub `main`). Its extension code is that of tag
-  `v0.4.3` (`856cbcf`); what came after is `Cargo.lock`, the Setup fix and formatting (its
-  CHANGELOG, "Unreleased"). The tag `v0.4.3` was moved once, on 2026-11-11, from `4c0f6a0` to
-  `856cbcf` (same gate code); the CHANGELOG says so, and release tags are no longer moved.
+* pg_agent_gate 0.4.4: tag `v0.4.4` = commit `25db28d`. Its extension code is that of 0.4.3
+  (tag `v0.4.3`, `856cbcf`); 0.4.4 adds `Cargo.lock`, the Setup fix and formatting (its
+  CHANGELOG). The tag `v0.4.3` was moved once, on 2026-11-11, from `4c0f6a0` to `856cbcf`
+  (same gate code); the CHANGELOG says so, and release tags are no longer moved.
 * ygg-agent 0.2.0: tag `v0.2.0` = commit `9c77bf5` (PyPI `ygg-agent` 0.2.0).
 * pg_phasevec 0.20.0: tag `v0.20.0` = commit `fdd19cb` (preview).
-* pg_living_assertions and the guards: their latest tags (`v0.5.10`, `v0.2.10`, `v0.4.9`,
-  `v1.1.11`, `v0.2.10`).
+* pg_living_assertions and the guards: tags `v0.5.11`, `v0.2.11`, `v0.4.10`, `v1.1.12` and
+  `v0.2.11` (2026-11-25). Their objects are those of the releases before them (`v0.5.10`,
+  `v0.2.10`, `v0.4.9`, `v1.1.11`, `v0.2.10`): what changed is the README's "Tested on", for
+  PostgreSQL 19.0 and the current minor releases.
 
 ## How to report
 
